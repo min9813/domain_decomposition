@@ -4,7 +4,7 @@
 #include <utility>
 using namespace std;
 
-std::tuple<vector<vector<float>>, vector<int> > lu_partition(vector<vector<float>> coef_matrix){
+tuple<vector<vector<float>>, vector<int> > lu_partition(vector<vector<float>> coef_matrix){
 // vector<vector<float>> lu_partition(vector<vector<float>> coef_matrix)
 
     int n_rows = coef_matrix.size();
@@ -39,12 +39,40 @@ std::tuple<vector<vector<float>>, vector<int> > lu_partition(vector<vector<float
 
         for(j=i+1;j<n_rows;j++){
             coef_matrix[j][i] *= omega; // calc L
-            for(k=i+1;k<n_rows;k++){
+            for(k=i+1;k<n_cols;k++){
                 coef_matrix[j][k] -= coef_matrix[i][k] * coef_matrix[j][i];
             }
         }
     }
-    return std::forward_as_tuple(coef_matrix, pivot_indexes);
+    return forward_as_tuple(coef_matrix, pivot_indexes);
     // return coef_matrix;
 
+}
+
+vector<vector <float>> cholesky_factorize(vector<vector<float>> coef_matrix){
+    int n_rows = coef_matrix.size();
+    int n_cols = coef_matrix[0].size();
+    // vector<vector<float> > cholesky_factorized_vec(n_rows, vector<float>(n_rows,0));
+    if (n_rows != n_cols)
+    {
+        cout << "expect columns = rows, actual " << n_cols << " = " << n_rows << endl;
+        exit(1);
+    }
+
+    int i,j,k;
+    float omega;
+
+    for(i=0;i<n_rows;i++){
+        omega = sqrt(coef_matrix[i][i]);
+        cout << omega << endl;
+        for(j=i+1;j<n_rows;j++){
+            coef_matrix[j][i] /= omega;
+            for(k=i+1;k<=j;k++){
+                coef_matrix[j][k] -= coef_matrix[j][i] * coef_matrix[k][i];
+            }
+        }
+        coef_matrix[i][i] = omega;
+    }
+
+    return coef_matrix;
 }

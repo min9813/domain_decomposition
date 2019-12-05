@@ -9,8 +9,8 @@ FNAME = none
 keisan.o: keisan.cpp
 	c++ -c -o keisan.o keisan.cpp
 
-pde: pde.cpp
-	c++ -o main pde.cpp lu.cpp -std=c++11
+pde: src/pde.cpp
+	c++ -o main src/pde.cpp src/lu.cpp -std=c++14
 
 mp_test:mp_test.cpp
 	c++ -o main mp_test.cpp -std=c++11 -lpthread
