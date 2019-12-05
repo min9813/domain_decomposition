@@ -1,0 +1,8 @@
+*python
+python*
+.ipynb_checkpoints
+*
+!src
+!Makefile
+!Readme
+!.gitignore
