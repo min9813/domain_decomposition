@@ -6,3 +6,7 @@ python*
 !Makefile
 !Readme
 !.gitignore
+!*.cpp
+!*.c
+!*.h
+!*.hpp
