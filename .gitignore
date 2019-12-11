@@ -10,3 +10,4 @@ python*
 !*.c
 !*.h
 !*.hpp
+!*.py

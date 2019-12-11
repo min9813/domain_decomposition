@@ -7,33 +7,45 @@
 #include <fstream>
 #include <string>
 #include <iomanip>
+#include <map>
 using namespace std;
 // namespace plt = matplotlibcpp;
 
-vector<vector<float> > explicit_solve(vector<vector<float>> *field, int now_step, float calc_time_step, float x_delta, float t_delta, pair<int, int> domain_col, float coef = 1.)
+vector<vector<vector<float>>> explicit_solve(vector<vector<vector<float>>> *field, int now_step, float calc_time_step, map<string, float> delta, map<int, pair<int,int>> domain_col, float coef = 1.)
 {
-    int i, j, k;
-    int calc_step = int(calc_time_step / t_delta);
-    int start_col, end_col;
-    if (domain_col.first == 0)
-        start_col = 1;
+    int t, i, j;
+    int calc_step = int(calc_time_step / delta["t"]);
+    int start_xid, end_xid, start_yid, end_yid;
+    float x_diff, ratio_x, ratio_y, y_diff;
+    if (domain_col[0].first == 0)
+        start_xid = 1;
     else
-        start_col = domain_col.first;
+        start_xid = domain_col[0].first;
+    if(domain_col[1].first == 0)
+        start_yid = 1;
+    else
+        start_yid = domain_col[1].first;
     // cout << "ok exp1" << endl;
     // cout << "end col:" << domain_col.second << endl;
     // cout << "start col:" << start_col << endl;
 
-    float ratio = coef * t_delta / x_delta;
+    ratio_x = coef * delta["t"] / delta["x"];
+    ratio_y = coef * delta["t"] / delta["y"];
+
     // initialize
     // printf("%lx %lx\n", (long)field, (long)&(*field)[0]);
 
     // solve
-    for (i = now_step; i < calc_step + now_step; i++)
+    for (t = now_step; t < calc_step + now_step; t++)
     {
         // cout << "ok exp2 " << now_step <<" i=  " << i<< endl;
-        for (j = start_col; j < domain_col.second; j++)
+        for (i = start_xid; i < domain_col[0].second; i++)
         {
-            (*field)[i][j] = ratio * (*field)[i - 1][j - 1] + (1 - 2 * ratio) * (*field)[i - 1][j] + ratio * (*field)[i - 1][j + 1];
+            for(j = start_yid; j < domain_col[1].second;j++){
+                x_diff = (*field)[t-1][i+1][j] + (*field)[t-1][i-1][j] - 2 * (*field)[t-1][i][j];
+                y_diff = (*field)[t-1][i][j+1] + (*field)[t-1][i][j-1] - 2 * (*field)[t-1][i][j];
+                (*field)[t][i][j] = (*field)[t-1][i][j] + ratio_x * x_diff + ratio_y * y_diff;
+            }
         }
     }
 
@@ -42,49 +54,86 @@ vector<vector<float> > explicit_solve(vector<vector<float>> *field, int now_step
     return *field;
 }
 
-vector<vector<float >> implicit_solve(vector<vector<float>> *field, int now_step, float calc_time_step, float x_delta, float t_delta, pair<int, int> domain_col, float coef = 1.)
+vector<vector<vector<float>>> implicit_solve(vector<vector<vector<float>>> *field, int now_step, float calc_time_step, map<string, float> delta, map<int, pair<int,int>> domain_col, float coef = 1.)
 {
-    int i, j, k, coef_k, coef_j, field_k, field_j;
-    int n_rows = (*field).size();
-    int start_col, end_col;
-    if (domain_col.first == 0)
-        start_col = 1;
+    int t, i, j, k, index, x_idx, y_idx, coef_idx, field_xid, field_yid, coef_k;
+    int calc_step = int(calc_time_step / delta["t"]);
+    int start_xid, end_xid, start_yid, end_yid;
+    float x_diff, ratio_x, ratio_y, y_diff;
+    if (domain_col[0].first == 0)
+        start_xid = 1;
     else
-        start_col = domain_col.first;
-    end_col = domain_col.second;
-    int f2c_idx = 0;
-    int coef_n_cols = end_col - start_col;
-    int calc_step = int(calc_time_step / t_delta);
+        start_xid = domain_col[0].first;
+    if(domain_col[1].first == 0)
+        start_yid = 1;
+    else
+        start_yid = domain_col[1].first;
+    // cout << "ok exp1" << endl;
+    // cout << "end col:" << domain_col.second << endl;
+    // cout << "start col:" << start_col << endl;
 
-    float ratio = coef * t_delta / x_delta;
+    ratio_x = coef * delta["t"] / delta["x"];
+    ratio_y = coef * delta["t"] / delta["y"];
+
+    end_xid = domain_col[0].second;
+    end_yid = domain_col[1].second;
+
+    int f2c_idx = 0;
+    int x_idx_num, y_idx_num, coef_n_cols;
+    x_idx_num = end_xid - start_xid;
+    y_idx_num = end_yid - start_yid;
+    coef_n_cols = x_idx_num * y_idx_num;
+
     float substitute_sum;
 
-    vector<float> coef_list{-ratio, 1 + 2 * ratio, -ratio};
+    vector<float> coef_list{-ratio_y, -ratio_x, 1 + 2 * ratio_x + 2*ratio_y, -ratio_x, -ratio_y};
+    // vector<float> x0_coef_list{-ratio_y, -ratio_x, 1 + 2 * ratio_x + 2*ratio_y, -ratio_x, -ratio_y};
+
     // cout << "n_cols  " << (*field)[0].size() << endl;
     // cout << "n_rows  " << n_rows << endl;
     // making coef matrix
     vector<vector<float>> coef_matrix(coef_n_cols, vector<float>(coef_n_cols, 0));
+    vector<int> index_list{-x_idx_num, -1, 0, 1, x_idx_num};
 
-    vector<int> pivot_indexes;
+    // vector<int> pivot_indexes;
 
     for (i = 0; i < coef_n_cols; i++)
     {
-        if (i == 0)
+        // if (i == 0)
+        // {
+        //     coef_matrix[i][i] = coef_list[2];
+        //     coef_matrix[i][i+1] = coef_list[3];
+        //     coef_matrix[i][i+x_idx_num] = coef_list[4];
+
+        // }else if(i / x_idx_num == 0){
+        //     coef_matrix[i][i] = coef_list[2];
+        //     coef_matrix[i][i-1] = coef_list[1];
+        //     coef_matrix[i][i+1] = coef_list[3];
+        //     coef_matrix[i][i+x_idx_num] = coef_list[4];
+        // }else if(i % x_idx_num == 1){
+        //     coef_matrix[i][i] = coef_list[2];
+        //     coef_matrix[i][i-x_idx_num] = coef_list[0];
+        //     coef_matrix[i][i+1] = coef_list[3];
+        //     coef_matrix[i][i+x_idx_num] = coef_list[4];
+        // }else if(i / x_idx_num == (y_idx_num - 1)){
+        //     coef_matrix[i][i] = coef_list[2];
+        //     coef_matrix[i][i-x_idx_num] = coef_list[0];
+        //     coef_matrix[i][i-1] = coef_list[1];
+        //     coef_matrix[i][i+1] = coef_list[3];
+        // }else if(i % x_idx_num == 0){
+        //     coef_matrix[i][i] = coef_list[2];
+        //     coef_matrix[i][i-x_idx_num] = coef_list[0];
+        //     coef_matrix[i][i-1] = coef_list[1];
+        //     coef_matrix[i][i+x_idx_num] = coef_list[4];
+        // }
+        for (j = 0; j < index_list.size(); j++)
         {
-            coef_matrix[0][0] = 1 + 2 * ratio;
-            coef_matrix[0][1] = -ratio;
-        }
-        else if (i == coef_n_cols-1)
-        {
-            coef_matrix[i][i] = 1 + 2 * ratio;
-            coef_matrix[i][i - 1] = -ratio;
-        }
-        else
-        {
-            for (j = i - 1; j < i + 2; j++)
-            {
-                coef_matrix[i][j] = coef_list[1 + j - i];
+            index = i + index_list[j];
+            if(index < 0 || index >= coef_n_cols) continue;
+            if((index / x_idx_num != i / x_idx_num) && (index % x_idx_num != i % x_idx_num)){
+                continue;
             }
+            coef_matrix[i][i+index_list[j]] = coef_list[j];
         }
     }
 
@@ -109,44 +158,47 @@ vector<vector<float >> implicit_solve(vector<vector<float>> *field, int now_step
         // cout << "end col = " << end_col << " start col " << start_col << endl;
 
         // cout << (*field)[i-1] <<endl;
+        for(x_idx=start_xid;x_idx<end_xid;x_idx++){
+            if(x_idx == start_xid){
+                (*field)[i - 1][start_xid][start_yid] += (*field)[i - 1][start_xid - 1][start_yid] * coef_list[1];
+                (*field)[i - 1][start_xid][start_yid] += (*field)[i - 1][start_xid][start_yid-x_idx_num] * coef_list[0];
+                (*field)[i - 1][start_xid][end_yid-1] += (*field)[i - 1][start_xid - 1][end_yid-1] * coef_list[3];
+                (*field)[i - 1][start_xid][end_yid-1] += (*field)[i - 1][start_xid][end_yid] * coef_list[4];
+            }else if(x_idx == end_xid-1){
+                (*field)[i - 1][x_idx][start_yid] += (*field)[i - 1][x_idx+1][start_yid] * coef_list[1];
+                (*field)[i - 1][x_idx][start_yid] += (*field)[i - 1][x_idx][start_yid-1] * coef_list[0];
+                (*field)[i - 1][x_idx][end_yid-1] += (*field)[i - 1][x_idx+1][end_yid-1] * coef_list[3];
+                (*field)[i - 1][x_idx][end_yid-1] += (*field)[i - 1][x_idx][end_yid] * coef_list[4];
+                
+            }else{
+                (*field)[i-1][x_idx][start_yid] += (*field)[i-1][x_idx][start_yid-1] * coef_list[0];
+                (*field)[i-1][x_idx][end_yid-1] += (*field)[i-1][x_idx][end_yid] * coef_list[4];
+            }
+        }
+        for(y_idx=start_yid+1;y_idx<end_yid-1;y_idx++){
+            (*field)[i-1][start_xid][y_idx] = (*field)[i-1][start_xid-1][y_idx] * coef_list[1];
+            (*field)[i-1][end_xid-1][y_idx] = (*field)[i-1][end_xid][y_idx] * coef_list[3];
+        }
 
-        (*field)[i - 1][start_col] += (*field)[i - 1][start_col - 1] * ratio;
-        (*field)[i - 1][end_col-1] += (*field)[i - 1][end_col] * ratio;
         // start forward substitution
         // cout << "i = " << i << endl;
         // cout << "imp ok 1" << endl;
 
         // cout << (*field)[i-1] <<endl;
 
-        for (j = start_col; j < end_col; j++)
+        for (x_idx = start_xid; x_idx < end_xid; x_idx++)
         {
-            coef_j = j - start_col;
-            field_j = j + f2c_idx;
-            substitute_sum = 0.;
-            // cout << "j = " << j <<" coef_j " << coef_j << endl;
-
-            for (k = start_col; k < j; k++)
-            {
-                field_k = k + f2c_idx;
-                coef_k = k - start_col;
-                // cout << "j = " << j << " pivot index = " << pivot_indexes[coef_k] + f2c_idx << endl;
-                // cout << "coef j = " << coef_j << " coef k " << coef_k << endl;
-                // in forwarding, use the variable you want to solve. in this case, field[i], not [i-1]
-                substitute_sum += coef_matrix[coef_j][coef_k] * (*field)[i][field_k];
-            }
-            // cout << "substitute sum " << substitute_sum << endl;
-            // cout << "j = " << j << " pivot index after = " << pivot_indexes[coef_j] + f2c_idx << endl;
-            // cout << "field : " << (*field)[i - 1][field_j] << " pivot " << pivot_indexes[coef_j] << endl;
-            // cout << "bunshi : " << (*field)[i - 1][field_j] - substitute_sum << endl;
-            // cout << "bunbo :" << coef_matrix[coef_j][coef_j] << endl;
-
-            // devide by coef_matrix[coef_j][coef_j] only once, backward, xor forward.
-            (*field)[i][field_j] = ((*field)[i - 1][field_j] - substitute_sum) / coef_matrix[coef_j][coef_j]; 
+            for(y_idx = start_yid; y_idx < end_yid; y_idx++){
+                coef_idx = (x_idx - start_xid) + (y_idx - start_yid) * x_idx_num;
+                field_xid = j + f2c_idx;
+                substitute_sum = 0.;
+                }
+            
         }
         // cout << "imp ok 2" << endl;
 
-        (*field)[i - 1][start_col] -= (*field)[i - 1][start_col - 1] * ratio;
-        (*field)[i - 1][end_col-1] -= (*field)[i - 1][end_col] * ratio;
+        (*field)[i - 1][start_xid] -= (*field)[i - 1][start_xid - 1] * ratio;
+        (*field)[i - 1][end_xid-1] -= (*field)[i - 1][end_xid] * ratio;
 
         // cout << (*field)[i-1] <<endl;
         // cout << (*field)[i] <<endl;
@@ -157,16 +209,16 @@ vector<vector<float >> implicit_solve(vector<vector<float>> *field, int now_step
 
 
         // start backward substitution
-        for (j = end_col-1; j >= start_col; j--)
+        for (j = end_xid-1; j >= start_xid; j--)
         {
             // cout << "j = " << j << endl;
-            coef_j = j - start_col;
+            coef_j = j - start_xid;
             // cout << "j = " << j <<" coef_j " << coef_j << endl;
 
             substitute_sum = 0.;
-            for (k = end_col-1; k > j; k--)
+            for (k = end_xid-1; k > j; k--)
             {
-                coef_k = k - start_col;
+                coef_k = k - start_xid;
                 // coef_k = end_col-coef_k;
                 // cout << "coef_j " << coef_j << " coef_k " << coef_k << " field k :" << k << endl;
                 // cout << "coef value: " << coef_matrix[coef_k][coef_j] << " field valud : " << (*field)[i][k + f2c_idx] << endl;
