@@ -64,7 +64,7 @@ vector<vector <float>> cholesky_factorize(vector<vector<float>> coef_matrix){
 
     for(i=0;i<n_rows;i++){
         omega = sqrt(coef_matrix[i][i]);
-        cout << omega << endl;
+        // cout << omega << endl;
         for(j=i+1;j<n_rows;j++){
             coef_matrix[j][i] /= omega;
             for(k=i+1;k<=j;k++){

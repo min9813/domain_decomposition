@@ -110,8 +110,8 @@ vector<vector<float >> implicit_solve(vector<vector<float>> *field, int now_step
 
         // cout << (*field)[i-1] <<endl;
 
-        (*field)[i - 1][start_col] += (*field)[i - 1][start_col - 1] * ratio;
-        (*field)[i - 1][end_col-1] += (*field)[i - 1][end_col] * ratio;
+        (*field)[i - 1][start_col] -= (*field)[i - 1][start_col - 1] * ratio;
+        (*field)[i - 1][end_col-1] -= (*field)[i - 1][end_col] * ratio;
         // start forward substitution
         // cout << "i = " << i << endl;
         // cout << "imp ok 1" << endl;
@@ -145,8 +145,8 @@ vector<vector<float >> implicit_solve(vector<vector<float>> *field, int now_step
         }
         // cout << "imp ok 2" << endl;
 
-        (*field)[i - 1][start_col] -= (*field)[i - 1][start_col - 1] * ratio;
-        (*field)[i - 1][end_col-1] -= (*field)[i - 1][end_col] * ratio;
+        (*field)[i - 1][start_col] += (*field)[i - 1][start_col - 1] * ratio;
+        (*field)[i - 1][end_col-1] += (*field)[i - 1][end_col] * ratio;
 
         // cout << (*field)[i-1] <<endl;
         // cout << (*field)[i] <<endl;

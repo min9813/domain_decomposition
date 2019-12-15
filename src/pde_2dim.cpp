@@ -2,29 +2,36 @@
 #include <vector>
 #include <cmath>
 #include <prettyprint.hpp>
-#include <matplotlibcpp.h>
 #include "numerical.hpp"
-#include <fstream>
-#include <string>
-#include <iomanip>
-#include <map>
+#include <fstream> // file io
+#include <string> 
+#include <sstream> // digit adjust
+#include <iomanip> //exit?
+#include <map> 
+#include <chrono> // time calculation
+#include <filesystem> // make directory
+#include "yaml-cpp/yaml.h"
 using namespace std;
+namespace fs = filesystem;
 // namespace plt = matplotlibcpp;
 
-vector<vector<vector<float>>> explicit_solve(vector<vector<vector<float>>> *field, int now_step, float calc_time_step, map<string, float> delta, map<int, pair<int,int>> domain_col, float coef = 1.)
+fs::path OUTPUT_FILE_PATH, LOG_PATH;
+ofstream OUTPUT_FILE, LOG_FILE;
+template <typename T> string float_to_string(T value, int precision);
+vector<vector<vector<float>>> explicit_solve(vector<vector<vector<float>>> *field, int now_step, float calc_time_step, map<string, float> delta, map<string, pair<int, int>> domain_col, float coef = 1.)
 {
     int t, i, j;
     int calc_step = int(calc_time_step / delta["t"]);
     int start_xid, end_xid, start_yid, end_yid;
     float x_diff, ratio_x, ratio_y, y_diff;
-    if (domain_col[0].first == 0)
+    if (domain_col["x"].first == 0)
         start_xid = 1;
     else
-        start_xid = domain_col[0].first;
-    if(domain_col[1].first == 0)
+        start_xid = domain_col["x"].first;
+    if (domain_col["y"].first == 0)
         start_yid = 1;
     else
-        start_yid = domain_col[1].first;
+        start_yid = domain_col["y"].first;
     // cout << "ok exp1" << endl;
     // cout << "end col:" << domain_col.second << endl;
     // cout << "start col:" << start_col << endl;
@@ -39,12 +46,13 @@ vector<vector<vector<float>>> explicit_solve(vector<vector<vector<float>>> *fiel
     for (t = now_step; t < calc_step + now_step; t++)
     {
         // cout << "ok exp2 " << now_step <<" i=  " << i<< endl;
-        for (i = start_xid; i < domain_col[0].second; i++)
+        for (i = start_xid; i < domain_col["x"].second; i++)
         {
-            for(j = start_yid; j < domain_col[1].second;j++){
-                x_diff = (*field)[t-1][i+1][j] + (*field)[t-1][i-1][j] - 2 * (*field)[t-1][i][j];
-                y_diff = (*field)[t-1][i][j+1] + (*field)[t-1][i][j-1] - 2 * (*field)[t-1][i][j];
-                (*field)[t][i][j] = (*field)[t-1][i][j] + ratio_x * x_diff + ratio_y * y_diff;
+            for (j = start_yid; j < domain_col["y"].second; j++)
+            {
+                x_diff = (*field)[t - 1][i + 1][j] + (*field)[t - 1][i - 1][j] - 2 * (*field)[t - 1][i][j];
+                y_diff = (*field)[t - 1][i][j + 1] + (*field)[t - 1][i][j - 1] - 2 * (*field)[t - 1][i][j];
+                (*field)[t][i][j] = (*field)[t - 1][i][j] + ratio_x * x_diff + ratio_y * y_diff;
             }
         }
     }
@@ -54,29 +62,31 @@ vector<vector<vector<float>>> explicit_solve(vector<vector<vector<float>>> *fiel
     return *field;
 }
 
-vector<vector<vector<float>>> implicit_solve(vector<vector<vector<float>>> *field, int now_step, float calc_time_step, map<string, float> delta, map<int, pair<int,int>> domain_col, float coef = 1.)
+vector<vector<vector<float>>> implicit_solve(vector<vector<vector<float>>> *field, int now_step, float calc_time_step, map<string, float> delta, map<string, pair<int, int>> domain_col, float coef = 1.)
 {
     int t, i, j, k, index, x_idx, y_idx, coef_idx, field_xid, field_yid, coef_k;
     int calc_step = int(calc_time_step / delta["t"]);
-    int start_xid, end_xid, start_yid, end_yid;
+    int start_xid, end_xid, start_yid, end_yid, tmp_field_xid, tmp_field_yid;
     float x_diff, ratio_x, ratio_y, y_diff;
-    if (domain_col[0].first == 0)
+    if (domain_col["x"].first == 0)
         start_xid = 1;
     else
-        start_xid = domain_col[0].first;
-    if(domain_col[1].first == 0)
+        start_xid = domain_col["x"].first;
+    if (domain_col["y"].first == 0)
         start_yid = 1;
     else
-        start_yid = domain_col[1].first;
+        start_yid = domain_col["y"].first;
     // cout << "ok exp1" << endl;
     // cout << "end col:" << domain_col.second << endl;
     // cout << "start col:" << start_col << endl;
 
     ratio_x = coef * delta["t"] / delta["x"];
     ratio_y = coef * delta["t"] / delta["y"];
+    // cout << "ratio" << endl;
+    // cout << ratio_x << ratio_y << delta << coef << endl;
 
-    end_xid = domain_col[0].second;
-    end_yid = domain_col[1].second;
+    end_xid = domain_col["x"].second;
+    end_yid = domain_col["y"].second;
 
     int f2c_idx = 0;
     int x_idx_num, y_idx_num, coef_n_cols;
@@ -86,7 +96,7 @@ vector<vector<vector<float>>> implicit_solve(vector<vector<vector<float>>> *fiel
 
     float substitute_sum;
 
-    vector<float> coef_list{-ratio_y, -ratio_x, 1 + 2 * ratio_x + 2*ratio_y, -ratio_x, -ratio_y};
+    vector<float> coef_list{-ratio_y, -ratio_x, 1 + 2 * ratio_x + 2 * ratio_y, -ratio_x, -ratio_y};
     // vector<float> x0_coef_list{-ratio_y, -ratio_x, 1 + 2 * ratio_x + 2*ratio_y, -ratio_x, -ratio_y};
 
     // cout << "n_cols  " << (*field)[0].size() << endl;
@@ -129,28 +139,46 @@ vector<vector<vector<float>>> implicit_solve(vector<vector<vector<float>>> *fiel
         for (j = 0; j < index_list.size(); j++)
         {
             index = i + index_list[j];
-            if(index < 0 || index >= coef_n_cols) continue;
-            if((index / x_idx_num != i / x_idx_num) && (index % x_idx_num != i % x_idx_num)){
+            if (index < 0 || index >= coef_n_cols)
+                continue;
+            if ((index / x_idx_num != i / x_idx_num) && (index % x_idx_num != i % x_idx_num))
+            {
                 continue;
             }
-            coef_matrix[i][i+index_list[j]] = coef_list[j];
+            coef_matrix[i][i + index_list[j]] = coef_list[j];
         }
     }
+    // cout << coef_list << endl;
+    // cout << "-------------" << "coef matrix ini" << "------------" << endl;
+    // for (int i=0;i<coef_matrix.size();i++){
+        // cout << coef_matrix[i] << endl;
+    // }
+    // exit(1);
+    // cout << coef_matrix << endl;
 
     // printf("ok1");
 
-    // cout << "coef matrix:" << coef_n_cols << "," << coef_n_cols << endl; 
+    // cout << "coef matrix:" << coef_n_cols << "," << coef_n_cols << endl;
     // cout << "---------- coef mat initial ------------" << endl;
     // cout << coef_matrix << endl;
 
     // std::tie(coef_matrix, pivot_indexes) = lu_partition(coef_matrix);
     coef_matrix = cholesky_factorize(coef_matrix);
+    // cout << "-------------" << "factorized coef matrix" << "------------" << endl;
+    // for (int i=0;i<coef_matrix.size();i++){
+        // cout << fixed << setprecision(4) << coef_matrix[i] << endl;
+    // }
+    // exit(1);
     // cout << "i = " << coef_matrix << endl;
     // cout << "pv = " << pivot_indexes << endl;
     // exit(0);
+    // cout << "------- field prev step ---------" << endl;
+    // for(int i=0;i<(*field)[now_step].size();i++){
+        // cout << i << (*field)[now_step-1][i] << endl;
+    // }
 
     // start time step
-    for (i = now_step; i <= now_step+calc_time_step; i++)
+    for (i = now_step; i <= now_step + calc_time_step; i++)
     {
 
         // cout << "############### forward #############" << endl;
@@ -158,27 +186,43 @@ vector<vector<vector<float>>> implicit_solve(vector<vector<vector<float>>> *fiel
         // cout << "end col = " << end_col << " start col " << start_col << endl;
 
         // cout << (*field)[i-1] <<endl;
-        for(x_idx=start_xid;x_idx<end_xid;x_idx++){
-            if(x_idx == start_xid){
-                (*field)[i - 1][start_xid][start_yid] += (*field)[i - 1][start_xid - 1][start_yid] * coef_list[1];
-                (*field)[i - 1][start_xid][start_yid] += (*field)[i - 1][start_xid][start_yid-x_idx_num] * coef_list[0];
-                (*field)[i - 1][start_xid][end_yid-1] += (*field)[i - 1][start_xid - 1][end_yid-1] * coef_list[3];
-                (*field)[i - 1][start_xid][end_yid-1] += (*field)[i - 1][start_xid][end_yid] * coef_list[4];
-            }else if(x_idx == end_xid-1){
-                (*field)[i - 1][x_idx][start_yid] += (*field)[i - 1][x_idx+1][start_yid] * coef_list[1];
-                (*field)[i - 1][x_idx][start_yid] += (*field)[i - 1][x_idx][start_yid-1] * coef_list[0];
-                (*field)[i - 1][x_idx][end_yid-1] += (*field)[i - 1][x_idx+1][end_yid-1] * coef_list[3];
-                (*field)[i - 1][x_idx][end_yid-1] += (*field)[i - 1][x_idx][end_yid] * coef_list[4];
-                
-            }else{
-                (*field)[i-1][x_idx][start_yid] += (*field)[i-1][x_idx][start_yid-1] * coef_list[0];
-                (*field)[i-1][x_idx][end_yid-1] += (*field)[i-1][x_idx][end_yid] * coef_list[4];
+        for (x_idx = start_xid; x_idx < end_xid; x_idx++)
+        {
+            if (x_idx == start_xid)
+            {
+                (*field)[i - 1][start_yid][start_xid] -= (*field)[i - 1][start_yid][start_xid - 1] * coef_list[1];
+                (*field)[i - 1][start_yid][start_xid] -= (*field)[i - 1][start_yid - 1][start_xid] * coef_list[0];
+                (*field)[i - 1][end_yid - 1][start_xid] -= (*field)[i - 1][end_yid - 1][start_xid - 1] * coef_list[1];
+                (*field)[i - 1][end_yid - 1][start_xid] -= (*field)[i - 1][end_yid][start_xid] * coef_list[4];
+            }
+            else if (x_idx == end_xid - 1)
+            {
+                (*field)[i - 1][start_yid][x_idx] -= (*field)[i - 1][start_yid][x_idx + 1] * coef_list[3];
+                (*field)[i - 1][start_yid][x_idx] -= (*field)[i - 1][start_yid - 1][x_idx] * coef_list[0];
+                (*field)[i - 1][end_yid - 1][x_idx] -= (*field)[i - 1][end_yid - 1][x_idx + 1] * coef_list[3];
+                (*field)[i - 1][end_yid - 1][x_idx] -= (*field)[i - 1][end_yid][x_idx] * coef_list[4];
+            }
+            else
+            {
+                (*field)[i - 1][start_yid][x_idx] -= (*field)[i - 1][start_yid - 1][x_idx] * coef_list[0];
+                (*field)[i - 1][end_yid - 1][x_idx] -= (*field)[i - 1][end_yid][x_idx] * coef_list[4];
             }
         }
-        for(y_idx=start_yid+1;y_idx<end_yid-1;y_idx++){
-            (*field)[i-1][start_xid][y_idx] = (*field)[i-1][start_xid-1][y_idx] * coef_list[1];
-            (*field)[i-1][end_xid-1][y_idx] = (*field)[i-1][end_xid][y_idx] * coef_list[3];
+        for (y_idx = start_yid + 1; y_idx < end_yid - 1; y_idx++)
+        {
+            (*field)[i - 1][y_idx][start_xid] -= (*field)[i - 1][y_idx][start_xid - 1] * coef_list[1];
+            (*field)[i - 1][y_idx][end_xid - 1] -= (*field)[i - 1][y_idx][end_xid] * coef_list[3];
         }
+
+        // cout << "------- field prev step after add ---------" << endl;
+        // for(int jj=0;jj<(*field)[now_step].size();jj++){
+            // cout << jj << (*field)[now_step-1][jj] << endl;
+        // }
+
+        // cout << "------- field now step after add ---------" << endl;
+        // for(int jj=0;jj<(*field)[now_step].size();jj++){
+            // cout << jj << (*field)[now_step][jj] << endl;
+        // }
 
         // start forward substitution
         // cout << "i = " << i << endl;
@@ -186,19 +230,60 @@ vector<vector<vector<float>>> implicit_solve(vector<vector<vector<float>>> *fiel
 
         // cout << (*field)[i-1] <<endl;
 
-        for (x_idx = start_xid; x_idx < end_xid; x_idx++)
+        for (y_idx = start_yid; y_idx < end_yid; y_idx++)
         {
-            for(y_idx = start_yid; y_idx < end_yid; y_idx++){
-                coef_idx = (x_idx - start_xid) + (y_idx - start_yid) * x_idx_num;
-                field_xid = j + f2c_idx;
+            for (x_idx = start_xid; x_idx < end_xid; x_idx++)
+            {
+                coef_idx = (y_idx - start_yid) * x_idx_num + (x_idx - start_xid);
                 substitute_sum = 0.;
+                for (k = 0; k < coef_idx; k++)
+                {
+                    tmp_field_xid = k % x_idx_num + start_xid;
+                    tmp_field_yid = k / x_idx_num + start_yid;
+                    substitute_sum += coef_matrix[coef_idx][k] * (*field)[i][tmp_field_yid][tmp_field_xid];
+                    // cout << k << " fx " << tmp_field_xid<<" fy " << tmp_field_yid ;
+                    // cout << " sub sum: " << substitute_sum << " coef mat " <<coef_matrix[coef_idx][k] << " field "<< (*field)[i][tmp_field_yid][tmp_field_xid]<<endl;
                 }
-            
+                // cout << y_idx <<" " << x_idx <<" " <<coef_idx<<" substitute sum = " << substitute_sum << endl;
+                (*field)[i][y_idx][x_idx] = ((*field)[i - 1][y_idx][x_idx] - substitute_sum) / coef_matrix[coef_idx][coef_idx];
+                // cout << "*** field matrix ***" << endl;
+                // cout << y_idx<<(*field)[i][y_idx] <<endl;
+            }
         }
+        // cout << "------------- after forward ----------------" << endl;
+        // for(int jj=0;jj<(*field)[now_step].size();jj++){
+            // cout << jj<< fixed << setprecision(4)  << (*field)[now_step][jj] << endl;
+        // }
+
         // cout << "imp ok 2" << endl;
 
-        (*field)[i - 1][start_xid] -= (*field)[i - 1][start_xid - 1] * ratio;
-        (*field)[i - 1][end_xid-1] -= (*field)[i - 1][end_xid] * ratio;
+        for (x_idx = start_xid; x_idx < end_xid; x_idx++)
+        {
+            if (x_idx == start_xid)
+            {
+                (*field)[i - 1][start_yid][start_xid] += (*field)[i - 1][start_yid][start_xid - 1] * coef_list[1];
+                (*field)[i - 1][start_yid][start_xid] += (*field)[i - 1][start_yid - 1][start_xid] * coef_list[0];
+                (*field)[i - 1][end_yid - 1][start_xid] += (*field)[i - 1][end_yid - 1][start_xid - 1] * coef_list[3];
+                (*field)[i - 1][end_yid - 1][start_xid] += (*field)[i - 1][end_yid][start_xid] * coef_list[4];
+            }
+            else if (x_idx == end_xid - 1)
+            {
+                (*field)[i - 1][start_yid][x_idx] += (*field)[i - 1][start_yid][x_idx + 1] * coef_list[1];
+                (*field)[i - 1][start_yid][x_idx] += (*field)[i - 1][start_yid - 1][x_idx] * coef_list[0];
+                (*field)[i - 1][end_yid - 1][x_idx] += (*field)[i - 1][end_yid - 1][x_idx + 1] * coef_list[3];
+                (*field)[i - 1][end_yid - 1][x_idx] += (*field)[i - 1][end_yid][x_idx] * coef_list[4];
+            }
+            else
+            {
+                (*field)[i - 1][start_yid][x_idx] += (*field)[i - 1][start_yid - 1][x_idx] * coef_list[0];
+                (*field)[i - 1][end_yid - 1][x_idx] += (*field)[i - 1][end_yid][x_idx] * coef_list[4];
+            }
+        }
+        for (y_idx = start_yid + 1; y_idx < end_yid - 1; y_idx++)
+        {
+            (*field)[i - 1][y_idx][start_xid] += (*field)[i - 1][y_idx][start_xid - 1] * coef_list[1];
+            (*field)[i - 1][y_idx][end_xid - 1] += (*field)[i - 1][y_idx][end_xid] * coef_list[3];
+        }
 
         // cout << (*field)[i-1] <<endl;
         // cout << (*field)[i] <<endl;
@@ -207,88 +292,152 @@ vector<vector<vector<float>>> implicit_solve(vector<vector<vector<float>>> *fiel
 
         // cout << "############### backward #############" << endl;
 
-
         // start backward substitution
-        for (j = end_xid-1; j >= start_xid; j--)
+        for (y_idx = end_yid - 1; y_idx >= start_yid; y_idx--)
         {
-            // cout << "j = " << j << endl;
-            coef_j = j - start_xid;
-            // cout << "j = " << j <<" coef_j " << coef_j << endl;
-
-            substitute_sum = 0.;
-            for (k = end_xid-1; k > j; k--)
+            for (x_idx = end_xid - 1; x_idx >= start_xid; x_idx--)
             {
-                coef_k = k - start_xid;
-                // coef_k = end_col-coef_k;
-                // cout << "coef_j " << coef_j << " coef_k " << coef_k << " field k :" << k << endl;
-                // cout << "coef value: " << coef_matrix[coef_k][coef_j] << " field valud : " << (*field)[i][k + f2c_idx] << endl;
-                // cout << " product ; " << coef_matrix[coef_k][coef_j] * (*field)[i][k + f2c_idx] << endl;
-                substitute_sum += coef_matrix[coef_k][coef_j] * (*field)[i][k + f2c_idx];
+                coef_idx = (y_idx - start_yid) * x_idx_num + (x_idx - start_xid);
+                substitute_sum = 0.;
+                for (k = coef_n_cols - 1; k > coef_idx; k--)
+                {
+                    tmp_field_xid = k % x_idx_num + start_xid;
+                    tmp_field_yid = k / x_idx_num + start_yid;
+                    substitute_sum += coef_matrix[k][coef_idx] * (*field)[i][tmp_field_yid][tmp_field_xid];
+                    // cout << k << " fx " << tmp_field_xid<<" fy " << tmp_field_yid ;
+                    // cout << " sub sum: " << substitute_sum << " coef mat " <<coef_matrix[coef_idx][k] << " field "<< (*field)[i][tmp_field_yid][tmp_field_xid]<<endl;
+
+                }
+                (*field)[i][y_idx][x_idx] = ((*field)[i][y_idx][x_idx] - substitute_sum) / coef_matrix[coef_idx][coef_idx];
+
+                // cout << y_idx <<" " << x_idx <<" " <<coef_idx<<" substitute sum = " << substitute_sum << endl;
+                // cout << "*** field matrix ***" << endl;
+                // cout << y_idx<<(*field)[i][y_idx] <<endl;
             }
-            // cout << "substitute sum " << substitute_sum << endl;
-            // cout << "j = " << j << " pivot index after = " << pivot_indexes[coef_j] + f2c_idx << endl;
-            // cout << "j = " << j << endl;
-            // cout << "field : " << (*field)[i][j + f2c_idx] << endl;
-            // cout << "bunshi : " << (*field)[i][j + f2c_idx] - substitute_sum << endl;
-            // cout << "bunbo :" << coef_matrix[coef_j][coef_j] << endl;
-            (*field)[i][j + f2c_idx] = ((*field)[i][j + f2c_idx] - substitute_sum) / coef_matrix[coef_j][coef_j];
         }
+        // cout << "------------- after backward ----------------" << endl;
+        // for(int jj=0;jj<(*field)[now_step].size();jj++){
+            // cout << jj<< fixed << setprecision(4)  << (*field)[now_step][jj] << endl;
+        // }
     }
 
+    // exit(1);
+
     // for (i=0;i<10;i++){
-        // cout << (*field)[i] << endl;
+    // cout << (*field)[i] << endl;
 
     // }
 
     return *field;
-
 }
 
-vector<vector <float>> solve(vector<vector<float>> *field, vector<float> x_bound, float x_delta, float t_delta, vector<float> imp_boundary, vector<float> exp_boundary, float coef = 1., float exp_time_delta=-1, float imp_time_delta=-1)
+vector<vector<vector<float>>> solve(vector<vector<vector<float>>> *field, map<string, pair<float, float>> spatio_bound, map<string, float> delta, vector<map<string, pair<float, float>>> domain_boundary)
 {
-    int now_step, step, j, k;
+    int now_step, step, j, k, tmp_col1, tmp_col2;
+    float coef;
     int n_rows = (*field).size();
-    int n_cols = (*field)[0].size();
-    pair<int, int> imp_cols, exp_cols;
-    int col0 = (int)((imp_boundary[0] - x_bound[0]) / x_delta);
-    int col1 = (int)((imp_boundary[1] - x_bound[0]) / x_delta);
-    imp_cols = make_pair(col0, col1);
-    if (exp_time_delta < 0){
-        exp_time_delta = t_delta;
-    }
-    if (imp_time_delta < 0){
-        imp_time_delta = t_delta;
+    int n_cols1 = (*field)[0].size();
+    int n_cols2 = (*field)[0][0].size();
+    map<string, map<string, float>> delta_info;
+
+    vector<map<string, pair<int, int>>> domain_col(domain_boundary.size());
+    for (j = 0; j < domain_boundary.size(); j++)
+    {
+        map<string, pair<int, int>> tmp_domain_col;
+        for (auto itr = domain_boundary[j].begin(); itr != domain_boundary[j].end(); itr++)
+        {
+            if (itr->first == "x" || itr->first == "y"){
+                tmp_col1 = (int)((itr->second.first - spatio_bound[itr->first].first) / (delta[itr->first]));
+                tmp_col2 = (int)((itr->second.second - spatio_bound[itr->first].first) / (delta[itr->first]));
+                tmp_domain_col[itr->first] = make_pair(tmp_col1, tmp_col2);
+            }else{
+                tmp_domain_col[itr->first] = itr->second;                
+            }
+        }
+        domain_col[j] = tmp_domain_col;
     }
 
-    // cout << "ok" << endl;
+    delta_info["exp"] = delta;
+    delta_info["imp"] = delta;
 
-    col0 = (int)((exp_boundary[0] - x_bound[0]) / x_delta);
-    col1 = (int)((exp_boundary[1] - x_bound[0]) / x_delta);
-    exp_cols = make_pair(col0, col1);
     // cout << "ok1" << endl;
-
+    std::chrono::system_clock::time_point  start, end;
+    float elapsed = 0.;
+    vector<float> domain_elapsed(domain_col.size(), 0.);
+    // vector<int> counter(domain_col.size(), 0.);
     for (now_step = 1; now_step < n_rows; now_step++)
     {
-        explicit_solve(field, now_step, exp_time_delta, x_delta, t_delta, exp_cols, coef);
+        for (j = 0; j < domain_col.size(); j++)
+        {
+            coef = domain_col[j]["coef"].first;
 
-        implicit_solve(field, now_step, imp_time_delta, x_delta, t_delta, imp_cols, coef);
+            if (domain_col[j]["is_exp"].first==1){
+                if(domain_col[j]["t_delta"].first > 0){
+                    delta_info["exp"]["t"] = domain_col[j]["t_delta"].first;
+                }
+                start = std::chrono::system_clock::now();
+                explicit_solve(field, now_step, delta_info["exp"]["t"], delta_info["exp"], domain_col[j], coef);
+                end = std::chrono::system_clock::now();
+                elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
+            }else{
+                if(domain_col[j]["t_delta"].first > 0){
+                    delta_info["imp"]["t"] = domain_col[j]["t_delta"].first;
+                }
+                start = std::chrono::system_clock::now();
+                implicit_solve(field, now_step, delta_info["imp"]["t"], delta_info["imp"], domain_col[j], coef);
+                end = std::chrono::system_clock::now();
+                elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
+            }
+            domain_elapsed[j] += elapsed / (n_rows-1);
+        }
     }
 
+    string tmp, tmp2;
+    LOG_FILE.open(LOG_PATH, ios::app);
+    LOG_FILE << "--- mean time | total (" << n_rows-1 << " step) time ---\n";
+    for(j=0;j<domain_elapsed.size();j++){
+        tmp = float_to_string(domain_elapsed[j], 2);
+        LOG_FILE << tmp << "ms | ";
+        tmp = float_to_string(domain_elapsed[j]*(n_rows-1), 2);
+        LOG_FILE << tmp <<"ms" << "\n";
+    }
+    LOG_FILE.close();
     return *field;
 }
 
-vector<vector<float>> initialize(vector<vector<float>> *field, float initial_value, vector<float> x_bound){
-    int i,j;
-    int n_cols = (*field)[0].size();
+vector<vector<vector <float>>> initialize(vector<vector<vector<float>>> *field, float initial_value, map<string, pair<float, float>> bound_value)
+{
+    int i, j, k;
     int n_rows = (*field).size();
-    for(i=0;i<n_rows;i++){
-        for(j=0;j<n_cols;j++){
-            if(i==0 & j>0 & j<n_cols-1){
-                (*field)[0][j] = initial_value;
-            }else if(j==0){
-                (*field)[i][j] = x_bound[0];
-            }else if(j==n_cols-1){
-                (*field)[i][j] = x_bound[1];
+    int n_cols = (*field)[0].size();
+    int n_cols2 = (*field)[0][0].size();
+
+    for (i = 0; i < n_rows; i++)
+    {
+        for (j = 0; j < n_cols; j++)
+        {
+            for (k = 0; k < n_cols2; k++)
+            {
+                if (i == 0 & j > 0 & j<n_cols - 1 & k> 0 & k < n_cols2 - 1)
+                {
+                    (*field)[0][j][k] = initial_value;
+                }
+                else if (k == 0)
+                {
+                    (*field)[i][j][k] = bound_value["x"].first;
+                }
+                else if (k == n_cols2 - 1)
+                {
+                    (*field)[i][j][k] = bound_value["x"].second;
+                }
+                else if (j == 0)
+                {
+                    (*field)[i][j][k] = bound_value["y"].first;
+                }
+                else if (j == n_cols - 1)
+                {
+                    (*field)[i][j][k] = bound_value["y"].second;
+                }
             }
         }
     }
@@ -299,83 +448,134 @@ vector<vector<float>> initialize(vector<vector<float>> *field, float initial_val
     return *field;
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+    if (argc < 2){
+        printf("must specify config file in command line argument!\n");
+        exit(1);
+    }
+    int i, j, k, n_rows, n_cols_y, n_cols_x;
+    fs::path OUTPUT_FILE_PATH = argv[2];
+    fs::path save_dir = OUTPUT_FILE_PATH.parent_path();
+    if (!fs::exists(save_dir)) fs::create_directories(save_dir);
 
-    // 初期値、境界値（x=0, 1, t=0 の3つ）、tiem delta、x_delta を引数にすると良さそう
-    int n_cols = 11;         // 列数
-    float initial_value = 1, coef=1; // 初期値
-    float exp_time_delta = -1, imp_time_delta = -1;
-    float t_delta, x_delta;
-    int i, j, n_rows;
-    vector<float> x_value = {0.0, 0.0};    // boundary value
-    vector<float> x_bound = {0.0, 1.0};
-    vector<float> t_bound = {0.0, 2.0};
-    vector<float> imp_boundary = {0.7,1.0};
-    vector<float> exp_boundary = {0.0,0.7};
+    OUTPUT_FILE_PATH = argv[2];
+    LOG_PATH = OUTPUT_FILE_PATH.string<char>() + ".log";
+    OUTPUT_FILE.open(OUTPUT_FILE_PATH, ios::out);
+    OUTPUT_FILE.close();
 
-    string filename = "pde_output.txt";
-    ofstream writing_file;
+    printf("load confing config file from %s\n", argv[1]);
+    cout << "save result to " << save_dir << "\n";
+    string line = "-----------------------------";
+    cout << line <<"\n";
+    YAML::Node config = YAML::LoadFile(argv[1]);
+    cout << config << endl;
+    cout << line <<"\n";
 
-    float x_length = x_bound[1] - x_bound[0];
-    float time_length = t_bound[1] - t_bound[0];
-    x_delta = x_length / float(n_cols-1);
-    // t_delta = 0.1;
-    t_delta = 0.01;
-    // printf("x_delta = %f", x_delta);
+    LOG_FILE.open(LOG_PATH, ios::out);
+    LOG_FILE << "save result to directory: " << save_dir << "\n";
+    LOG_FILE << "load config config file from " << argv[1] << "\n";
+    LOG_FILE << line << "\n";
+    LOG_FILE << config << "\n";
+    LOG_FILE << line << "\n";
+    LOG_FILE.close();
 
-    n_rows = (int)((t_bound[1] - t_bound[0]) / t_delta);
-    vector<vector<float>> vec(n_rows, vector<float>(n_cols, 0));
+    float tmp;
+    map<string, float> delta = config["delta"].as<map<string, float>>();
 
-    vec = initialize(&vec, initial_value, x_value);
-    // vector<vector<float> > vec;
+    auto spatio_bound = config["space"].as<map<string, pair<float,float>>>();
+    auto t_bound = config["time"].as<pair<float, float>>();
 
-    vec = solve(&vec, x_bound, x_delta, t_delta, imp_boundary, exp_boundary, coef, exp_time_delta, imp_time_delta);
-    // vec = implicit_solve(time_length, t_delta, x_length, x_delta, initial_value, x_value);
 
-    float t_now, x_now;
+    auto bound_value = config["condition"]["bound_value"].as<map<string, pair<float, float>>>();
+    float initial_value = config["condition"]["initial_value"]["t"].as<float>();
 
-    writing_file.open(filename, ios::out);
+    vector<map<string, pair<float, float>>> domain_list;
+    for(std::size_t i=0;i<config["solver"].size();i++){
+        auto tmp_domain_info = config["solver"][i]["boundary"].as<map<string, pair<float, float>>>();
+        
+        tmp = config["solver"][i]["coef"].as<float>();
+        tmp_domain_info["coef"] = make_pair(tmp, tmp);
+        
+        tmp = (float)(config["solver"][i]["type"].as<string>()=="exp");
+        tmp_domain_info["is_exp"] = make_pair(tmp, tmp);
+        
+        tmp = config["solver"][i]["t_delta"].as<float>();
+        tmp_domain_info["t_delta"] = make_pair(tmp, tmp);
+        
+        domain_list.push_back(tmp_domain_info);
+    }
 
-    cout << "writing " << filename << "..." << endl;
+    float x_length = spatio_bound["x"].second - spatio_bound["x"].first;
+    float y_length = spatio_bound["y"].second - spatio_bound["y"].first;
+    float time_length = t_bound.second - t_bound.first;
 
+    n_cols_x = (int)(x_length / delta["x"]) + 1;
+    n_cols_y = (int)(y_length / delta["y"]) + 1;
+    n_rows = (int)(time_length / delta["t"]) + 1;
+
+    vector<vector<vector <float>>> vec(n_rows, vector<vector<float>>(n_cols_y, vector<float>(n_cols_x, 0)));
+    vec = initialize(&vec, initial_value, bound_value);
+
+    printf("start solving ... \n");
+    auto start = std::chrono::system_clock::now(); 
+    vec = solve(&vec, spatio_bound, delta, domain_list);
+    auto end = std::chrono::system_clock::now();
+    double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() / 1000.0; //処理に要した時間をミリ秒に変換
+    string e = "end in " + float_to_string(elapsed, 2) + "s";
+    cout << e << "\n";
+
+    LOG_FILE.open(LOG_PATH, ios::app);
+    LOG_FILE << e << "\n";
+    LOG_FILE.close();
+
+    OUTPUT_FILE.open(OUTPUT_FILE_PATH, ios::app);
+    std::cout << "writing " << OUTPUT_FILE_PATH << "..." << std::endl;
+
+    float t_now, x_now, y_now;
     for (i = 0; i < vec.size(); i++)
     {
-        t_now = t_bound[0] + i * t_delta;
-        if(i==0){
-            printf("time,");
-            writing_file << "time,";
-            for(j=0;j < n_cols; j++){
-                x_now = x_bound[0] + x_delta * j;
-                cout << fixed << setprecision(3) << x_now;
-                writing_file << "x=" <<fixed <<setprecision(3)<< x_now;
-                if (j<n_cols-1){
-                    cout << "\t";
-                    writing_file << ",";
-                }
-            }
-            writing_file << endl;
-            cout << endl;
-        }
-        printf("t=%f\t", t_now);
-        writing_file << t_now << ",";
-
-        for (j = 0; j < vec[0].size(); j++)
+        t_now = t_bound.first + i * delta["t"];
+        if (i == 0)
         {
-            if(j < vec[0].size()-1){
-                printf("%f\t", vec[i][j]);
-                writing_file << vec[i][j] << ",";
-            }else{
-                printf("%f", vec[i][j]);
-                writing_file << vec[i][j];
+            // printf("time,");
+            OUTPUT_FILE << "time,";
+            for (j = 0; j < n_cols_y; j++)
+            {
+                y_now = spatio_bound["y"].first + delta["y"] * j;
+                for(k=0; k<n_cols_x;k++){
+                    x_now = spatio_bound["x"].first + delta["x"] * k;
+                    OUTPUT_FILE << "(x y)=" << fixed << setprecision(3) << x_now << " " << y_now;
+                    if (j < n_cols_y - 1 || k < n_cols_x - 1){
+                        OUTPUT_FILE << ",";
+                    }
+                }
+                // cout << fixed << setprecision(3) << x_now;
+            }
+            OUTPUT_FILE << endl;
+        }
+        OUTPUT_FILE << t_now << ",";
+
+        for (j = 0; j < n_cols_y; j++)
+        {
+            for(k = 0; k < n_cols_x; k++){
+                if (j < n_cols_y - 1 || k < n_cols_x-1)
+                {
+                    // printf("%f\t", vec[i][j]);
+                    OUTPUT_FILE << vec[i][j][k] << ",";
+                }
+                else
+                {
+                    // printf("%f", vec[i][j]);
+                    OUTPUT_FILE << vec[i][j][k];
+                }
             }
             
         }
-        writing_file << endl;
-        printf("\n");
+        OUTPUT_FILE << endl;
     }
 
-    writing_file.close();
+    OUTPUT_FILE.close();
     return 0;
 }
 
@@ -383,4 +583,11 @@ void print(vector<vector<float>> *vec)
 {
     int n_rows = (*vec).size();
     int n_cols = (*vec)[0].size();
+}
+
+template <typename T> string float_to_string(T value, int precision){
+    stringstream ss;
+    ss << fixed << setprecision(precision) << value;
+    string str = ss.str();
+    return str;
 }
