@@ -11,3 +11,5 @@ python*
 !*.h
 !*.hpp
 !*.py
+!*config
+!*.yaml

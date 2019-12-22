@@ -15,9 +15,9 @@ using namespace std;
 namespace fs = filesystem;
 // namespace plt = matplotlibcpp;
 
-fs::path OUTPUT_FILE_PATH, LOG_PATH;
-ofstream OUTPUT_FILE, LOG_FILE;
-template <typename T> string float_to_string(T value, int precision);
+// template <typename float>
+// int pde_2d(YAML::Node config, char* argv[], float type_value);
+
 vector<vector<vector<float>>> explicit_solve(vector<vector<vector<float>>> *field, int now_step, float calc_time_step, map<string, float> delta, map<string, pair<int, int>> domain_col, float coef = 1.)
 {
     int t, i, j;
@@ -36,9 +36,10 @@ vector<vector<vector<float>>> explicit_solve(vector<vector<vector<float>>> *fiel
     // cout << "end col:" << domain_col.second << endl;
     // cout << "start col:" << start_col << endl;
 
-    ratio_x = coef * delta["t"] / delta["x"];
-    ratio_y = coef * delta["t"] / delta["y"];
-
+    ratio_x = coef * delta["t"] / (delta["x"]*delta["x"]);
+    ratio_y = coef * delta["t"] / (delta["y"]*delta["y"]);
+    // cout << "explicit" << endl;
+    // cout << domain_col << endl;
     // initialize
     // printf("%lx %lx\n", (long)field, (long)&(*field)[0]);
 
@@ -46,12 +47,12 @@ vector<vector<vector<float>>> explicit_solve(vector<vector<vector<float>>> *fiel
     for (t = now_step; t < calc_step + now_step; t++)
     {
         // cout << "ok exp2 " << now_step <<" i=  " << i<< endl;
-        for (i = start_xid; i < domain_col["x"].second; i++)
+        for (i = start_yid; i < domain_col["y"].second; i++)
         {
-            for (j = start_yid; j < domain_col["y"].second; j++)
+            for (j = start_xid; j < domain_col["x"].second; j++)
             {
-                x_diff = (*field)[t - 1][i + 1][j] + (*field)[t - 1][i - 1][j] - 2 * (*field)[t - 1][i][j];
-                y_diff = (*field)[t - 1][i][j + 1] + (*field)[t - 1][i][j - 1] - 2 * (*field)[t - 1][i][j];
+                x_diff = (*field)[t - 1][i][j + 1] + (*field)[t - 1][i][j - 1] - 2 * (*field)[t - 1][i][j];
+                y_diff = (*field)[t - 1][i + 1][j] + (*field)[t - 1][i - 1][j] - 2 * (*field)[t - 1][i][j];
                 (*field)[t][i][j] = (*field)[t - 1][i][j] + ratio_x * x_diff + ratio_y * y_diff;
             }
         }
@@ -80,8 +81,8 @@ vector<vector<vector<float>>> implicit_solve(vector<vector<vector<float>>> *fiel
     // cout << "end col:" << domain_col.second << endl;
     // cout << "start col:" << start_col << endl;
 
-    ratio_x = coef * delta["t"] / delta["x"];
-    ratio_y = coef * delta["t"] / delta["y"];
+    ratio_x = coef * delta["t"] / (delta["x"]*delta["x"]);
+    ratio_y = coef * delta["t"] / (delta["y"]*delta["y"]);
     // cout << "ratio" << endl;
     // cout << ratio_x << ratio_y << delta << coef << endl;
 
@@ -105,37 +106,12 @@ vector<vector<vector<float>>> implicit_solve(vector<vector<vector<float>>> *fiel
     vector<vector<float>> coef_matrix(coef_n_cols, vector<float>(coef_n_cols, 0));
     vector<int> index_list{-x_idx_num, -1, 0, 1, x_idx_num};
 
+    // cout << "implicit" << endl;
+    // cout << domain_col << endl;
     // vector<int> pivot_indexes;
 
     for (i = 0; i < coef_n_cols; i++)
     {
-        // if (i == 0)
-        // {
-        //     coef_matrix[i][i] = coef_list[2];
-        //     coef_matrix[i][i+1] = coef_list[3];
-        //     coef_matrix[i][i+x_idx_num] = coef_list[4];
-
-        // }else if(i / x_idx_num == 0){
-        //     coef_matrix[i][i] = coef_list[2];
-        //     coef_matrix[i][i-1] = coef_list[1];
-        //     coef_matrix[i][i+1] = coef_list[3];
-        //     coef_matrix[i][i+x_idx_num] = coef_list[4];
-        // }else if(i % x_idx_num == 1){
-        //     coef_matrix[i][i] = coef_list[2];
-        //     coef_matrix[i][i-x_idx_num] = coef_list[0];
-        //     coef_matrix[i][i+1] = coef_list[3];
-        //     coef_matrix[i][i+x_idx_num] = coef_list[4];
-        // }else if(i / x_idx_num == (y_idx_num - 1)){
-        //     coef_matrix[i][i] = coef_list[2];
-        //     coef_matrix[i][i-x_idx_num] = coef_list[0];
-        //     coef_matrix[i][i-1] = coef_list[1];
-        //     coef_matrix[i][i+1] = coef_list[3];
-        // }else if(i % x_idx_num == 0){
-        //     coef_matrix[i][i] = coef_list[2];
-        //     coef_matrix[i][i-x_idx_num] = coef_list[0];
-        //     coef_matrix[i][i-1] = coef_list[1];
-        //     coef_matrix[i][i+x_idx_num] = coef_list[4];
-        // }
         for (j = 0; j < index_list.size(); j++)
         {
             index = i + index_list[j];
@@ -379,17 +355,34 @@ vector<vector<vector<float>>> solve(vector<vector<vector<float>>> *field, map<st
                 explicit_solve(field, now_step, delta_info["exp"]["t"], delta_info["exp"], domain_col[j], coef);
                 end = std::chrono::system_clock::now();
                 elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
+                // cout << "-------------- "<< j << " exp ------------" <<endl;
+                // for(int i=0;i<n_cols1;i++){
+                    // cout << "y=" << i << " " << (*field)[now_step][i] << endl;
+                // }
             }else{
                 if(domain_col[j]["t_delta"].first > 0){
                     delta_info["imp"]["t"] = domain_col[j]["t_delta"].first;
                 }
+                
                 start = std::chrono::system_clock::now();
                 implicit_solve(field, now_step, delta_info["imp"]["t"], delta_info["imp"], domain_col[j], coef);
                 end = std::chrono::system_clock::now();
                 elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
+                // cout << "-------------- "<< j << " imp ------------" <<endl;
+                // for(int i=0;i<n_cols1;i++){
+                    // cout << "y=" << i << " " << (*field)[now_step][i] << endl;
+                // }
             }
             domain_elapsed[j] += elapsed / (n_rows-1);
         }
+
+        // cout << "-------------- all ------------" <<endl;
+        // for(int i=0;i<n_cols1;i++){
+            // cout << "y=" << i << " " << (*field)[now_step][i] << endl;
+        // }
+        // if(now_step > 1){
+            // exit(1);
+        // }
     }
 
     string tmp, tmp2;
@@ -448,30 +441,36 @@ vector<vector<vector <float>>> initialize(vector<vector<vector<float>>> *field, 
     return *field;
 }
 
-int main(int argc, char* argv[])
+int pde_2d(YAML::Node config, char* argv[], float type_value)
 {
-    if (argc < 2){
-        printf("must specify config file in command line argument!\n");
-        exit(1);
-    }
+    // if (argc < 2){
+    //     printf("must specify config file in command line argument!\n");
+    //     exit(1);
+    // }
     int i, j, k, n_rows, n_cols_y, n_cols_x;
-    fs::path OUTPUT_FILE_PATH = argv[2];
-    fs::path save_dir = OUTPUT_FILE_PATH.parent_path();
-    if (!fs::exists(save_dir)) fs::create_directories(save_dir);
+    bool is_exact_solution;
+    
+
+    
+    // OUTPUT_FILE.open(OUTPUT_FILE_PATH, ios::out);
+    // OUTPUT_FILE.close();
+
+    // printf("load confing file from %s\n", argv[1]);
+    // cout << line <<"\n";
+    // YAML::Node config = YAML::LoadFile(argv[1]);
+    // cout << config << endl;
+    // cout << line <<"\n";
+    string line = "-----------------------------";
+
+    is_exact_solution = (config["is_exact"].as<int>()>0);
+
 
     OUTPUT_FILE_PATH = argv[2];
-    LOG_PATH = OUTPUT_FILE_PATH.string<char>() + ".log";
-    OUTPUT_FILE.open(OUTPUT_FILE_PATH, ios::out);
-    OUTPUT_FILE.close();
-
-    printf("load confing config file from %s\n", argv[1]);
+    fs::path save_dir = OUTPUT_FILE_PATH.parent_path();
+    if (!fs::exists(save_dir)) fs::create_directories(save_dir);
     cout << "save result to " << save_dir << "\n";
-    string line = "-----------------------------";
-    cout << line <<"\n";
-    YAML::Node config = YAML::LoadFile(argv[1]);
-    cout << config << endl;
-    cout << line <<"\n";
 
+    LOG_PATH = OUTPUT_FILE_PATH.string<char>() + ".log";
     LOG_FILE.open(LOG_PATH, ios::out);
     LOG_FILE << "save result to directory: " << save_dir << "\n";
     LOG_FILE << "load config config file from " << argv[1] << "\n";
@@ -483,7 +482,7 @@ int main(int argc, char* argv[])
     float tmp;
     map<string, float> delta = config["delta"].as<map<string, float>>();
 
-    auto spatio_bound = config["space"].as<map<string, pair<float,float>>>();
+    auto spatio_bound = config["space"].as<map<string, pair<float ,float>>>();
     auto t_bound = config["time"].as<pair<float, float>>();
 
 
@@ -514,12 +513,21 @@ int main(int argc, char* argv[])
     n_cols_y = (int)(y_length / delta["y"]) + 1;
     n_rows = (int)(time_length / delta["t"]) + 1;
 
+    cout << "ok pde 2 " <<endl;
+
     vector<vector<vector <float>>> vec(n_rows, vector<vector<float>>(n_cols_y, vector<float>(n_cols_x, 0)));
-    vec = initialize(&vec, initial_value, bound_value);
+    cout << "ok pde 3 " <<endl;
+    
+    if (!is_exact_solution){
+        cout << "initialize" << endl;
+        vec = initialize(&vec, initial_value, bound_value);
+    }
+    cout << "ok pde 4 " <<endl;
 
     printf("start solving ... \n");
-    auto start = std::chrono::system_clock::now(); 
-    vec = solve(&vec, spatio_bound, delta, domain_list);
+    auto start = std::chrono::system_clock::now();
+    if (is_exact_solution) vec = exact_solution_2d(&vec, spatio_bound, delta, domain_list[0]["coef"].first);
+    else vec = solve(&vec, spatio_bound, delta, domain_list);
     auto end = std::chrono::system_clock::now();
     double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() / 1000.0; //処理に要した時間をミリ秒に変換
     string e = "end in " + float_to_string(elapsed, 2) + "s";
@@ -529,7 +537,7 @@ int main(int argc, char* argv[])
     LOG_FILE << e << "\n";
     LOG_FILE.close();
 
-    OUTPUT_FILE.open(OUTPUT_FILE_PATH, ios::app);
+    OUTPUT_FILE.open(OUTPUT_FILE_PATH, ios::out);
     std::cout << "writing " << OUTPUT_FILE_PATH << "..." << std::endl;
 
     float t_now, x_now, y_now;
@@ -577,17 +585,4 @@ int main(int argc, char* argv[])
 
     OUTPUT_FILE.close();
     return 0;
-}
-
-void print(vector<vector<float>> *vec)
-{
-    int n_rows = (*vec).size();
-    int n_cols = (*vec)[0].size();
-}
-
-template <typename T> string float_to_string(T value, int precision){
-    stringstream ss;
-    ss << fixed << setprecision(precision) << value;
-    string str = ss.str();
-    return str;
 }

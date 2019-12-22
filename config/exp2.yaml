@@ -1,0 +1,29 @@
+dim: 2
+type: float
+is_exact: 0
+space:
+  x: [0.0,1.0]
+  y: [0.0,1.0]
+
+time: [0.0, 0.5]
+
+condition:
+  bound_value:
+    x: [0.0, 0.0]
+    y: [0.0, 0.0]
+
+  initial_value:
+    t: 1.0
+
+delta:
+  t: 0.01
+  x: 0.1
+  y: 0.1
+
+solver:
+    - type    : imp
+      boundary:
+        x: [0.0, 1.0]
+        y: [0.0, 1.0]
+      coef: 1.0
+      t_delta: -1.0
