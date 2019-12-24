@@ -21,9 +21,15 @@ delta:
   y: 0.1
 
 solver:
-    - type    : imp
+    - type    : exp
       boundary:
-        x: [0.0, 1.0]
+        x: [0.0, 0.7]
         y: [0.0, 1.0]
       coef: 1.0
+      t_delta: -1.0
+    - type    : imp
+      boundary:
+        x: [0.7, 1.0]
+        y: [0.0, 1.0]
+      coef: 10.0
       t_delta: -1.0

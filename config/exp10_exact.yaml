@@ -6,7 +6,7 @@ space:
   y: [0.0,1.0]
 
 
-time: [0.0, 1.0]
+time: [0.0, 0.5]
 
 condition:
   bound_value:
@@ -18,7 +18,7 @@ condition:
     t: 1.0
 
 delta:
-  t: 0.01
+  t: 0.001
   x: 0.1
   y: 0.1
 

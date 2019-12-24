@@ -4,13 +4,13 @@
 #include <sstream> // digit adjust
 #include <iomanip> //exit?
 #include<iostream>
-# include <prettyprint.hpp>
+#include <prettyprint.hpp>
 using namespace std;
 
 const float MIN_EPS = 1e-5;
 const float MAX_BOUND = 20.; 
 const float ALPHA_MAX = 100.; 
-const float GAMMA_MAX = 100000.; 
+const float GAMMA_MAX = 100001.; 
 
 
 

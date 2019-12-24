@@ -187,7 +187,8 @@ def draw_2d(path):
     x_bar = x_bar.reshape(x_col_num, y_col_num)
     y_bar = y_bar.reshape(x_col_num, y_col_num)
 
-    last_index = 10
+    last_index = 1000
+    bname = os.path.basename(result_dir)
     if os.path.exists(result_dir) is False:
         os.makedirs(result_dir)
     save_demo_path = os.path.join(result_dir, 'animate.mp4')
@@ -206,13 +207,13 @@ def draw_2d(path):
 
     for idx in tqdm(pde_data.index):
         now_time = pde_data.loc[idx, "time"]
-        source_value = pde_data.loc[idx, xy_col].values.reshape(x_bar.shape)
+        source_value = pde_data.loc[idx, xy_col].values.reshape(x_bar.shape).T
         fig = plt.figure()
         ax = fig.add_subplot(111, projection="3d")
         surf = ax.plot_surface(
             x_bar, y_bar, source_value.T, cmap='bwr', linewidth=0)
         plt.colorbar(surf)
-        ax.set_title("3d result t={:.4f}".format(now_time))
+        ax.set_title("3d result {} t={:.4f}".format(bname, now_time))
         ax.set_xlabel("X")
         ax.set_ylabel("Y")
         ax.set_zlabel("f")
@@ -229,6 +230,50 @@ def draw_2d(path):
         plt.close()
 
         if idx > last_index - 1:
+            break
+
+    video.release()
+
+
+def concat_video(paths):
+    result_dir = './result/2d/'
+    if os.path.exists(result_dir) is False:
+        os.makedirs(result_dir)
+
+    cap_files = [cv2.VideoCapture(path) for path in paths]
+    use_exp_name = "_".join(
+        [os.path.basename(os.path.dirname(path)) for path in paths])
+    for c in cap_files:
+        if c.isOpened() is False:
+            raise ValueError
+
+    save_demo_path = os.path.join(
+        result_dir, 'all_ani_{}_concat.mp4'.format(use_exp_name))
+
+    w = cap_files[0].get(cv2.CAP_PROP_FRAME_WIDTH)
+    h = cap_files[0].get(cv2.CAP_PROP_FRAME_WIDTH)
+    fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
+    last_index = np.inf
+
+    video_shape = (1600, 1200)
+    video = cv2.VideoWriter(save_demo_path, fourcc, 10., video_shape)
+
+    frame_num = int(cap_files[0].get(cv2.CAP_PROP_FRAME_COUNT))
+
+    for frame_now in tqdm(range(frame_num)):
+        images = []
+        for cap_file in cap_files:
+            flag, image = cap_file.read()
+            if flag is False:
+                raise ValueError
+            image = cv2.resize(image, (800, 600))
+            images.append(image)
+
+        new_img = np.concatenate(images[:2], axis=1)
+        new_img2 = np.concatenate(images[2:], axis=1)
+        new_img = np.concatenate((new_img, new_img2), axis=0)
+        video.write(new_img)
+        if frame_now > last_index:
             break
 
     video.release()
@@ -318,6 +363,10 @@ def main(args):
             draw_2d(args.pde_output_path)
         else:
             raise NotImplementedError
+    elif args.mode == "concat":
+        demo_exp = ["exp1", "exp2", "exp3", "exp10_exact"]
+        path = ["./result/{}/animate.mp4".format(d) for d in demo_exp]
+        concat_video(path)
     else:
         raise NotImplementedError
 
@@ -331,7 +380,7 @@ def make_config():
         description='PyTorch for deep face recognition')
     parser.add_argument('--exp_version', default='exp1')
     parser.add_argument('--mode', default='demo',
-                        choices=["1d_demo", "2d_demo", "one"])
+                        choices=["1d_demo", "2d_demo", "one", "concat"])
     parser.add_argument('--diff_method', default='raw',
                         choices=["raw", "raw_relative"])
 
