@@ -1,4 +1,3 @@
-TARGET = main
 CONF_FILE = exp1
 LPATH = /usr/local/lib
 LDFLAGS = -L/usr/local/lib
@@ -7,6 +6,8 @@ CFLAGS = -std=c++17
 LPTHREAD_FLAG = -lpthread
 BIN_FOLDER = ./bin
 SRC_FOLDER = ./src
+TARGET = main
+
 
 
 mp_test: mp_test.cpp
@@ -40,8 +41,8 @@ run_test: main_test
 	./main_test config/${CONF_FILE}.yaml result/${CONF_FILE}/${CONF_FILE}
 
 run: ${TARGET}
-	./main config/${CONF_FILE}.yaml result/${CONF_FILE}/${CONF_FILE}
+	.//main config/${CONF_FILE}.yaml result/${CONF_FILE}/${CONF_FILE}
 
 clean:
-	rm -f *.o
-	rm main
+	rm -f ${BIN_FOLDER}/*.o
+	rm ./main

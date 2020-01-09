@@ -13,6 +13,7 @@ namespace fs = filesystem;
 
 tuple<vector<vector<float>>, vector<int>> lu_partition(vector<vector<float>> coef_matrix);
 vector<vector<float>> cholesky_factorize(vector<vector<float>> coef_matrix);
+vector<vector <float>> sparse_cholesky_factorize(vector<vector<float>> coef_matrix);
 vector<vector<float>> exact_solution_1d(vector<vector<float>> *field, map<string, pair<float, float>> spatio_bound, map<string, float> delta, float coef);
 vector<vector<vector<float>>> exact_solution_2d(vector<vector<vector<float>>> *field, map<string, pair<float, float>> spatio_bound, map<string, float> delta, float coef);
 string float_to_string(float value, int precision);

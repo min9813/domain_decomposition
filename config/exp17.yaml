@@ -2,6 +2,7 @@ dim: 2
 type: float
 is_exact: 0
 is_sparse_lu: true
+
 space:
   x: [0.0,1.0]
   y: [0.0,1.0]
@@ -18,19 +19,13 @@ condition:
 
 delta:
   t: 0.001
-  x: 0.1
-  y: 0.1
+  x: 0.04
+  y: 0.04
 
 solver:
-    - type    : exp
-      boundary:
-        x: [0.0, 0.7]
-        y: [0.0, 1.0]
-      coef: 1.0
-      t_delta: -1.0
     - type    : imp
       boundary:
-        x: [0.7, 1.0]
+        x: [0.0, 1.0]
         y: [0.0, 1.0]
-      coef: 10.0
+      coef: 1.0
       t_delta: -1.0

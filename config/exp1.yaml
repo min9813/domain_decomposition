@@ -1,6 +1,7 @@
 dim: 2
 type: float
 is_exact: 0
+is_sparse_lu: false
 space:
   x: [0.0,1.0]
   y: [0.0,1.0]
