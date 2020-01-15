@@ -4,14 +4,14 @@ is_exact: 0
 space:
   x: [0.0,1.0]
 
-time: [0.0, 1.0]
+time: [0.0, 0.5]
 
 condition:
   bound_value:
     x: [0.0, 0.0]
 
   initial_value:
-    t: 1.0
+    t: 1
 
 delta:
   t: 0.004

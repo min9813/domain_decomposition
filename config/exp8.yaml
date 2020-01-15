@@ -4,7 +4,7 @@ is_exact: 0
 space:
   x: [0.0,1.0]
 
-time: [0.0, 1.0]
+time: [0.0, 0.5]
 
 condition:
   bound_value:

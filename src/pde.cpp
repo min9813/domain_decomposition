@@ -26,13 +26,14 @@ void explicit_solve(int now_step, float calc_time_step, map<string, float> delta
         start_xid = 1;
     else
         start_xid = domain_col["x"].first;
+    // printf("ok exp1");
     // cout << "ok exp1" << endl;
     // cout << "end col:" << domain_col.second << endl;
     // cout << "start col:" << start_col << endl;
 
     float ratio = coef * delta["t"] / (delta["x"]*delta["x"]);
 
-    cout << "exp ratio: " << ratio << endl;
+    // cout << "exp ratio: " << ratio << endl;
     // cout << "explicit " << domain_col << endl;
     // initialize
     // printf("%lx %lx\n", (long)field, (long)&field[0]);
@@ -209,6 +210,7 @@ vector<vector<float>> solve(map<string, pair<float, float>> spatio_bound, map<st
     map<string, map<string, float>> delta_info;
     float coef;
 
+    // printf("okok\n");
     vector<map<string, pair<int, int>>> domain_col(domain_boundary.size());
     for (j = 0; j < domain_boundary.size(); j++)
     {
@@ -226,16 +228,22 @@ vector<vector<float>> solve(map<string, pair<float, float>> spatio_bound, map<st
         domain_col[j] = tmp_domain_col;
     }
 
+    cout << domain_col << endl;
+    cout << delta << endl;
+
     delta_info["exp"] = delta;
     delta_info["imp"] = delta;
 
-    // cout << "ok1" << endl;
+    // printf("okok1\n");
+
     std::chrono::system_clock::time_point  start, end;
     float elapsed = 0.;
     vector<float> domain_elapsed(domain_col.size(), 0.);
     // vector<int> counter(domain_col.size(), 0.);
     for (now_step = 1; now_step < n_rows; now_step++)
     {
+        // printf("now step %d\n", now_step);
+
         for (j = 0; j < domain_col.size(); j++)
         {
             coef = domain_col[j]["coef"].first;
@@ -268,6 +276,7 @@ vector<vector<float>> solve(map<string, pair<float, float>> spatio_bound, map<st
             }
             domain_elapsed[j] += elapsed / (n_rows-1);
         }
+        // printf(" finish !\n");
     }
 
     string tmp, tmp2;
@@ -286,8 +295,8 @@ vector<vector<float>> solve(map<string, pair<float, float>> spatio_bound, map<st
 
 void initialize(float initial_value, map<string, pair<float, float>> bound_value){
     int i,j;
-    int n_cols = field.size();
-    int n_rows = field[0].size();
+    int n_rows = field.size();
+    int n_cols = field[0].size();
     if(n_cols==0 & n_rows==0){
         printf("must initialize field vector first !\n");
         exit(1);
@@ -303,6 +312,8 @@ void initialize(float initial_value, map<string, pair<float, float>> bound_value
                 field[i][j] = bound_value["x"].second;
             }
         }
+        cout << field[i] << endl;
+        cout << bound_value << endl;
     }
 
     // cout << "########## initial ###########" << endl;
@@ -343,6 +354,7 @@ int pde(YAML::Node config, char *argv[], float type_value)
     float initial_value = config["condition"]["initial_value"]["t"].as<float>();
 
     vector<map<string, pair<float, float>>> domain_list;
+    cout << "solver num:" << config["solver"].size() << endl;
     for(std::size_t i=0;i<config["solver"].size();i++){
         auto tmp_domain_info = config["solver"][i]["boundary"].as<map<string, pair<float, float>>>();
         

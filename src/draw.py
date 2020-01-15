@@ -35,7 +35,7 @@ def load_result(args):
         print("load from {}".format(path))
         pde_data = pd.read_csv(path, sep=',')
         pde_data_list.append(pde_data)
-        if 'exact' in exp_v:
+        if 'exp5' in exp_v:
             true_idx = args.demo_exp.index(exp_v)
         use_exp_name.append(exp_v.split("_")[0][3:])
 
@@ -49,10 +49,6 @@ def draw_1d(path):
     x2_value = [float(col[2:]) for col in pde_data.columns if 'x' in col]
     x1, x2 = np.meshgrid(x1_value, x2_value)
 
-    print(x1)
-
-    print(x2)
-
     x_col_name = [col for col in pde_data.columns if 'x' in col]
     z_value = pde_data[x_col_name].values
 
@@ -60,9 +56,31 @@ def draw_1d(path):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     surf = ax.plot_surface(x1, x2, z_value.T, cmap='bwr', linewidth=0)
+    ax.set_xlabel('t')
+    ax.set_ylabel('x')
+    ax.set_zlabel('u')
+
     fig.colorbar(surf)
-    ax.set_title("2d result")
-    plt.show()
+    # name_dict = {
+    # "exp5": "exact",
+    # "exp6"
+    # }
+    # ax.set_title("2d result")
+    exp_dir = os.path.dirname(path)
+    img_save_path = os.path.join(exp_dir, "result_all.png")
+    plt.savefig(img_save_path)
+
+
+def calc_1d_error(args):
+    pde_data_list, use_exp_name, true_idx = load_result(args)
+    true_df = pde_data_list[true_idx]
+    x_cols = [col for col in true_df.columns if 'x' in col]
+    true_values = true_df[x_cols].values
+    for idx, df in enumerate(pde_data_list):
+        if idx == true_idx:
+            continue
+        mean_arr = np.mean(np.abs(true_values - df[x_cols].values))
+        print(args.labels[idx], ":", mean_arr)
 
 
 def draw_1d_video(args):
@@ -80,7 +98,7 @@ def draw_1d_video(args):
     fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
     # turn to h,w
     # video_shape = tuple(video_shape.tolist())
-    last_index = 100
+    last_index = np.inf
 
     fig = plt.figure()
     shape_array = (fig.bbox_inches._points[1]*100).astype(int).tolist()
@@ -342,9 +360,13 @@ def draw_2d_demo(args):
 
 def main(args):
     if args.mode == "1d_demo":
-        args.demo_exp = ["exp5", "exp7", "exp11", "exp9_exact"]
-        args.labels = ["exp exp5", "imp exp7", "exp_imp exp11", "exact exp9"]
+        args.demo_exp = ["exp5", "exp6", "exp7", "exp8"]
+        args.labels = ["exact exp9", "exp exp5", "imp exp7", "exp_imp exp11"]
         draw_1d_video(args)
+    elif args.mode == "1d_calc":
+        args.demo_exp = ["exp5", "exp6", "exp7", "exp8"]
+        args.labels = ["exact exp9", "exp exp5", "imp exp7", "exp_imp exp11"]
+        calc_1d_error(args)
 
     elif args.mode == "2d_demo":
         args.demo_exp = ["exp1", "exp2", "exp3", "exp10_exact"]
@@ -380,7 +402,7 @@ def make_config():
         description='PyTorch for deep face recognition')
     parser.add_argument('--exp_version', default='exp1')
     parser.add_argument('--mode', default='demo',
-                        choices=["1d_demo", "2d_demo", "one", "concat"])
+                        choices=["1d_demo", "2d_demo", "one", "concat", "1d_calc"])
     parser.add_argument('--diff_method', default='raw',
                         choices=["raw", "raw_relative"])
 
