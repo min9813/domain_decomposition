@@ -2,12 +2,13 @@ dim: 2
 type: float
 is_exact: 0
 is_sparse_lu: true
+try_time: 100
 
 space:
   x: [0.0,1.0]
   y: [0.0,1.0]
 
-time: [0.0, 0.5]
+time: [0.0, 20]
 
 condition:
   bound_value:
@@ -18,14 +19,38 @@ condition:
     t: 1.0
 
 delta:
-  t: 0.001
-  x: 0.2
-  y: 0.2
+  t: 0.002
+  x: 0.02
+  y: 0.02
 
 solver:
     - type    : imp
       boundary:
-        x: [0.0, 1.0]
+        x: [0.0, 0.3]
         y: [0.0, 1.0]
-      coef: 1.0
+      coef: 0.01
+      t_delta: -1.0
+    - type    : imp
+      boundary:
+        x: [0.3, 0.4]
+        y: [0.0, 1.0]
+      coef: 10
+      t_delta: -1.0
+    - type    : imp
+      boundary:
+        x: [0.4, 0.7]
+        y: [0.0, 1.0]
+      coef: 0.01
+      t_delta: -1.0
+    - type    : imp
+      boundary:
+        x: [0.7, 0.8]
+        y: [0.0, 1.0]
+      coef: 10
+      t_delta: -1.0
+    - type    : imp
+      boundary:
+        x: [0.8, 1.0]
+        y: [0.0, 1.0]
+      coef: 0.01
       t_delta: -1.0

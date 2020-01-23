@@ -2,12 +2,14 @@ dim: 2
 type: float
 is_exact: 0
 is_sparse_lu: true
+try_time: 100
+is_sep: false
 
 space:
-  x: [0.0,1.0]
-  y: [0.0,1.0]
+  x: [0.0, 36000]
+  y: [0.0, 24000]
 
-time: [0.0, 0.5]
+time: [0.0, 120]
 
 condition:
   bound_value:
@@ -15,17 +17,53 @@ condition:
     y: [0.0, 0.0]
 
   initial_value:
-    t: 1.0
+    t: 20
 
 delta:
-  t: 0.001
-  x: 0.08
-  y: 0.08
+  t: 3 # max 0.35
+  x: 300
+  y: 400
 
 solver:
     - type    : imp
       boundary:
-        x: [0.0, 1.0]
-        y: [0.0, 1.0]
-      coef: 1.0
+        x: [0.0, 7500]
+        y: [0.0, 24000]
+      coef: 6220800.0
+      t_delta: -1.0
+    - type    : imp
+      boundary:
+        x: [7500, 9000]
+        y: [0.0, 24000]
+      coef: 5.39
+      t_delta: -1.0
+    - type    : imp
+      boundary:
+        x: [9000, 16500]
+        y: [0.0, 24000]
+      coef: 6220800.0
+      t_delta: -1.0
+    - type    : imp
+      boundary:
+        x: [16500, 18000]
+        y: [0.0, 24000]
+      coef: 5.39
+      t_delta: -1.0
+    - type    : imp
+      boundary:
+        x: [18000, 25500]
+        y: [0.0, 24000]
+      coef: 6220800.0
+      t_delta: -1.0
+    - type    : imp
+      boundary:
+        x: [25500, 27000]
+        y: [0.0, 24000]
+      coef: 5.39
+      t_delta: -1.0
+    - type    : imp
+      boundary:
+        x: [27000, 36000]
+        y: [0.0, 24000]
+      coef: 6220800.0
       t_delta: -1.0

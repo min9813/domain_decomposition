@@ -1,10 +1,11 @@
 dim: 1
 type: float
-is_exact: 1
+is_exact: 0
+try_time: 1
 space:
   x: [0.0,1.0]
 
-time: [0.0, 1.0]
+time: [0.0, 0.5]
 
 condition:
   bound_value:
@@ -20,11 +21,11 @@ delta:
 solver:
     - type    : imp
       boundary:
-        x: [0.0, 0.6]
+        x: [0.0, 0.9]
       coef: 1.0
       t_delta: -1.0
     - type    : exp
       boundary:
-        x: [0.6, 1.0]
+        x: [0.9, 1.0]
       coef: 1.0
       t_delta: -1.0

@@ -1,6 +1,7 @@
 dim: 1
 type: float
 is_exact: 1
+try_time: 1
 space:
   x: [0.0,1.0]
 

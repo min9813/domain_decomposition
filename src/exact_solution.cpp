@@ -24,7 +24,7 @@ inline float exp_sin_1d(float exp_value, float radian_x, float alpha);
 float point_value(float x, float t, float coef, float x_bound);
 float point_value_2d(float x, float y, float t, float coef, float x_bound, float y_bound);
 
-vector<vector<float>> exact_solution_1d(vector<vector<float>> *field, map<string, pair<float, float>> spatio_bound, map<string, float> delta, float coef){
+void exact_solution_1d(vector<vector<float>> *field, map<string, pair<float, float>> spatio_bound, map<string, float> delta, float coef){
     int t_idx, x_idx;
     int n_rows = (*field).size();
     int n_cols = (*field)[0].size();
@@ -46,10 +46,9 @@ vector<vector<float>> exact_solution_1d(vector<vector<float>> *field, map<string
             
         }
     }
-    return (*field);
 }
 
-vector<vector<vector<float>>> exact_solution_2d(vector<vector<vector<float>>> *field, map<string, pair<float, float>> spatio_bound, map<string, float> delta, float coef)
+void exact_solution_2d(vector<vector<vector<float>>> *field, map<string, pair<float, float>> spatio_bound, map<string, float> delta, float coef)
 {
     // cout << "sol 2d" << endl;
     int t_idx, x_idx, y_idx;
@@ -81,8 +80,6 @@ vector<vector<vector<float>>> exact_solution_2d(vector<vector<vector<float>>> *f
             // exit(1);
         // }
     }
-
-    return *field;
 }
 
 inline float cos_hypo(float value)

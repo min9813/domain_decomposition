@@ -1,12 +1,14 @@
 dim: 2
 type: float
 is_exact: 1
+try_time: 1
+is_sparse_lu: true
 space:
   x: [0.0,1.0]
   y: [0.0,1.0]
 
 
-time: [0.0, 0.5]
+time: [0.0, 0.3]
 
 condition:
   bound_value:
