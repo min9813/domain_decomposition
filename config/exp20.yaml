@@ -1,14 +1,14 @@
 dim: 2
-type: float
+type: mp
 is_exact: 0
 is_sparse_lu: true
-try_time: 1
+try_time: 100
 
 space:
   x: [0.0, 36000]
   y: [0.0, 24000]
 
-time: [0.0, 24000]
+time: [0.0, 120]
 
 condition:
   bound_value:
@@ -19,50 +19,50 @@ condition:
     t: 20
 
 delta:
-  t: 12 # max 0.35
+  t: 3 # max 0.35
   x: 300
   y: 400
 
 solver:
-    - type    : exp
+    - type    : imp
       boundary:
         x: [0.0, 7500]
         y: [0.0, 24000]
-      coef: 5.39
-      t_delta: -1.0
-    - type    : imp
-      boundary:
-        x: [7500, 9600]
-        y: [0.0, 24000]
-      coef: 622080.0
+      coef: 6220800.0 # per month
       t_delta: -1.0
     - type    : exp
       boundary:
-        x: [9600, 16200]
+        x: [7500, 9000]
         y: [0.0, 24000]
       coef: 5.39
       t_delta: -1.0
     - type    : imp
       boundary:
-        x: [16200, 18300]
+        x: [9000, 16500]
         y: [0.0, 24000]
-      coef: 622080.0
+      coef: 6220800.0
       t_delta: -1.0
     - type    : exp
       boundary:
-        x: [18300, 25500]
+        x: [16500, 18000]
         y: [0.0, 24000]
       coef: 5.39
       t_delta: -1.0
     - type    : imp
       boundary:
-        x: [25500, 28200]
+        x: [18000, 25500]
         y: [0.0, 24000]
-      coef: 622080.0
+      coef: 6220800.0
       t_delta: -1.0
     - type    : exp
       boundary:
-        x: [28200, 36000]
+        x: [25500, 27000]
         y: [0.0, 24000]
       coef: 5.39
+      t_delta: -1.0
+    - type    : imp
+      boundary:
+        x: [27000, 36000]
+        y: [0.0, 24000]
+      coef: 6220800.0
       t_delta: -1.0

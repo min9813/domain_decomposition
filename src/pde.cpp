@@ -17,6 +17,7 @@ namespace fs = filesystem;
 static vector<vector<float>> field;
 static double choleskey_elapsed_time = 0, gauss_time = 0;
 static bool is_sep = false;
+static bool is_ordered = false;
 
 void explicit_solve(int now_step, float calc_time_step, map<string, float> delta, map<string, pair<float, float>> domain_col, float coef = 1., pair<float, float> neighb_coef={1.0, 1.0})
 {
@@ -406,6 +407,132 @@ void sparse_implicit_solve(int now_step, float calc_time_step, map<string, float
     gauss_time += elapsed;
 }
 
+void sparse_implicit_solve_ordered(int now_step, float calc_time_step, map<string, float> delta, map<string, pair<float, float>> domain_col, float coef = 1., pair<float, float>neighb_coef={1.0, 1.0})
+{
+    int i, j, k, coef_k, coef_j, field_k, field_j;
+    int n_rows = field.size();
+    int start_col, end_col;
+    if (domain_col["x"].first == 0)
+        start_col = 1;
+    else
+        start_col = domain_col["x"].first;
+    end_col = domain_col["x"].second;
+    int f2c_idx = 0;
+    int coef_n_rows = end_col - start_col;
+    int coef_n_cols = 2;
+    int calc_step = int(calc_time_step / delta["t"]);
+
+    float ratio = coef * delta["t"] / (delta["x"]*delta["x"]);
+    float ratio_small = 2 * (coef * neighb_coef.first) / (coef + neighb_coef.first) * delta["t"] / (delta["x"]*delta["x"]);
+    float ratio_large = 2 * (coef * neighb_coef.second) / (coef + neighb_coef.second) * delta["t"] / (delta["x"]*delta["x"]);
+    float substitute_sum;
+    
+    vector<float> coef_list_main{1 + 2 * ratio, -ratio};
+    vector<float> coef_list_small{1 + 2 * ratio, -ratio_small};
+    vector<float> coef_list_large{1 + 2 * ratio, -ratio_large};
+
+    // cout << "n_cols  " << field[0].size() << endl;
+    // cout << "n_rows  " << n_rows << endl;
+    // making coef matrix
+    vector<float> coef_list;
+    vector<vector<float>> coef_matrix(coef_n_rows, vector<float>(coef_n_cols, 0));
+    // cout << "coef list:" << coef_list_main <<endl;
+    for (i = 0; i < coef_n_rows; i++)
+    {
+        if (i == 0)
+        {
+            coef_matrix[0][0] = 1 + 2 * ratio;
+            coef_matrix[0][1] = -ratio;
+        }
+        else if (i == coef_n_rows-1)
+        {
+            coef_matrix[i][0] = 1 + 2 * ratio;
+        }
+        else
+        {
+            for (j = 0; j < coef_list_main.size(); j++)
+            {
+                coef_matrix[i][j] = coef_list_main[j];
+            }
+        }
+    }
+
+    // printf("ok1");
+
+    // cout << "coef matrix:" << coef_n_cols << "," << coef_n_cols << endl; 
+    // cout << "---------- coef mat initial ------------" << endl;
+    // cout << coef_matrix << endl;
+    // cout << "------- before csolve ---------" << endl;
+    // for (i = 0; i < coef_n_rows; i++)
+    // {
+        // cout << "y=" << i << coef_matrix[i] << endl;
+    // }
+    // exit(0);
+    // std::tie(coef_matrix, pivot_indexes) = lu_partition(coef_matrix);
+    std::chrono::system_clock::time_point start, end;
+    float elapsed = 0.;
+    start = std::chrono::system_clock::now();
+
+    coef_matrix = sparse_cholesky_factorize(coef_matrix);
+    
+    end = std::chrono::system_clock::now();
+    elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0;
+    choleskey_elapsed_time += elapsed;
+
+    // cout << "i = " << coef_matrix << endl;
+    // cout << "pv = " << pivot_indexes << endl;
+    // exit(0);
+    // cout << "------- after csolve ---------" << endl;
+    // for (i = 0; i < coef_n_rows; i++)
+    // {
+    //     cout << "y=" << i << coef_matrix[i] << endl;
+    // }
+    int max_coef_row_index, add_index;
+    // start time step
+    start = std::chrono::system_clock::now();
+
+    for (i = now_step; i <= now_step+calc_time_step; i++)
+    {
+
+        field[i - 1][start_col] -= field[i][start_col - 1] * coef_list_small[1];
+        field[i - 1][end_col-1] -= field[i][end_col] * coef_list_large[1];
+        // start forward substitution
+
+        for (j = start_col; j < end_col; j++)
+        {
+            coef_j = j - start_col;
+            field_j = j + f2c_idx;
+            substitute_sum = 0.;
+            max_coef_row_index = min(coef_j, coef_n_cols-1);
+            if (max_coef_row_index > 0){
+                substitute_sum += coef_matrix[coef_j-1][1] * field[i][field_j-1];
+            }
+            field[i][field_j] = (field[i-1][field_j] - substitute_sum) / coef_matrix[coef_j][0];
+        }
+
+        field[i - 1][start_col] += field[i][start_col - 1] * coef_list_small[1];
+        field[i - 1][end_col-1] += field[i][end_col] * coef_list_large[1];
+
+
+        // start backward substitution
+        for (j = end_col-1; j >= start_col; j--)
+        {
+            coef_j = j - start_col;
+            field_j = j + f2c_idx;
+            max_coef_row_index = min(coef_n_rows-coef_j-1, coef_n_cols-1);
+
+            substitute_sum = 0.;
+            if (max_coef_row_index > 0){
+                substitute_sum += coef_matrix[coef_j][1] * field[i][field_j+1];
+            }
+            field[i][field_j] = (field[i][field_j] - substitute_sum) / coef_matrix[coef_j][0];
+        }
+    }
+    end = std::chrono::system_clock::now();
+    elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0;
+    gauss_time += elapsed;
+}
+
 void explicit_solve_whole(int now_step, float calc_time_step, map<string, float> delta, vector<map<string, pair<float, float>>> domain_col){
     int t, i, j, k;
     int calc_step = int(calc_time_step / delta["t"]);
@@ -570,8 +697,8 @@ void implicit_solve_whole(int now_step, float calc_time_step, map<string, float>
         // cout << field[i-1] <<endl;
         // cout << "-------- prev field org----------" << endl;
         // cout << field[i-1] <<endl;
-        field[i - 1][start_col] -= field[i - 1][start_col - 1] * coef_list[1];
-        field[i - 1][end_col-1] -= field[i - 1][end_col] * coef_list[1];
+        field[i - 1][start_col] -= field[i][start_col - 1] * coef_list[1];
+        field[i - 1][end_col-1] -= field[i][end_col] * coef_list[1];
         // start forward substitution
         // cout << "i = " << i << endl;
         // cout << "imp ok 1" << endl;
@@ -611,8 +738,8 @@ void implicit_solve_whole(int now_step, float calc_time_step, map<string, float>
 
         // cout << "imp ok 2" << endl;
 
-        field[i - 1][start_col] += field[i - 1][start_col - 1] * coef_list[1];
-        field[i - 1][end_col-1] += field[i - 1][end_col] * coef_list[1];
+        field[i - 1][start_col] += field[i][start_col - 1] * coef_list[1];
+        field[i - 1][end_col-1] += field[i][end_col] * coef_list[1];
 
         // cout << "-------- now field before bacjward ----------" << endl;
         // cout << field[i] <<endl;
@@ -745,7 +872,11 @@ void solve(map<string, pair<float, float>> spatio_bound, map<string, float> delt
                         delta_info["imp"]["t"] = domain_col[j]["t_delta"].first;
                     }
                     start = std::chrono::system_clock::now();
-                    sparse_implicit_solve(now_step, delta_info["imp"]["t"], delta_info["imp"], domain_col[j], coef, neighb_coef);
+                    if(is_ordered){
+                        sparse_implicit_solve_ordered(now_step, delta_info["imp"]["t"], delta_info["imp"], domain_col[j], coef, neighb_coef);
+                    }else{
+                        sparse_implicit_solve(now_step, delta_info["imp"]["t"], delta_info["imp"], domain_col[j], coef, neighb_coef);
+                    }
                     end = std::chrono::system_clock::now();
                     elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
                 }
@@ -814,6 +945,11 @@ int pde(YAML::Node config, char *argv[], float type_value)
         is_sep = config["is_sep"].as<int>() == 1;
     }catch(YAML::TypedBadConversion<int>){
         is_sep = false;
+    }
+    try{
+        is_ordered = config["is_ordered"].as<int>() == 1;
+    }catch(YAML::TypedBadConversion<int>){
+        is_ordered = false;
     }
     string line = "-----------------------------";
 

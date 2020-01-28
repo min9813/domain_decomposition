@@ -46,10 +46,10 @@ int main(int argc, char* argv[])
             exit(1);
         }
     }else if(space_dim==2){
-        if (type_name == "float"){
+        if (type_name == "sp"){
             pde_2d(config, argv, t_f);
-        }else if (type_name == "double"){
-            pde_2d(config, argv, t_d);
+        }else if (type_name == "mp"){
+            pde_2d_mp(config, argv, t_d);
         }else{
             printf("config argument \'type_name\' must be in (\'float\', \'double\')!\n");
             exit(1);

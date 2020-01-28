@@ -455,7 +455,7 @@ def main(args):
         if args.base_version == "exp5":
             args.demo_exp = ["exp5", "exp6", "exp7", "exp8", "exp9"]
             args.labels = ["exact exp5", "exp exp6",
-                           "imp exp7", "exp_imp exp8", "decompose imp exp9"]
+                           "imp exp7", "exp_imp exp8", "ordered imp exp9"]
         elif args.base_version == "exp21":
             args.demo_exp = ["exp21", "exp22", "exp23"]
             args.labels = ["exact exp21", "imp exp22", "domain exp23"]

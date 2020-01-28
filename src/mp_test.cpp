@@ -21,20 +21,27 @@ int main()
     std::chrono::system_clock::time_point start, end;
     // double result, result2;
     double r;
-    std::future<double> result, result2;
+    // std::future<double> result, result2, result3, result4;
+    double result, result2, result3, result4;
 
     start = std::chrono::system_clock::now();
 
     // 何かの処理
     // std::future<double> result = std::async(std::launch::async, [] { return ThreadA(0,1000000); });
     // std::future<double> result2 = std::async(std::launch::async, [] { return ThreadA(0,1000000); });
+    // std::future<double> result3 = std::async(std::launch::async, [] { return ThreadA(0,1000000); });
+    // std::future<double> result4 = std::async(std::launch::async, [] { return ThreadA(0,1000000); });
     for(int i=0;i<100;i++){
         // result = ThreadA(0, 1000000);
         // result2 = ThreadA(0, 1000000);
         // result += result2;
-        result = std::async(std::launch::async, [] { return ThreadA(0,1000000); });
-        result2 = std::async(std::launch::async, [] { return ThreadA(0,1000000); });
-        r = result.get() + result2.get();
+        result = ThreadA(0, 1000000);
+        result2 = ThreadA(0, 1000000);
+        result3 = ThreadA(0, 1000000);
+        result4 = ThreadA(0, 1000000);
+        r = result + result2 + result3 + result4;
+
+        // r = result.get() + result2.get() + result3.get() + result4.get();
     }
         
 

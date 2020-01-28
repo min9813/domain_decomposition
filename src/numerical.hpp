@@ -21,6 +21,7 @@ string float_to_string(float value, int precision);
 int pde_2d_main(YAML::Node config, char* argv[], float type_value);
 int pde(YAML::Node config, char* argv[], float type_value);
 int pde_2d(YAML::Node config, char* argv[], float type_value);
+int pde_2d_mp(YAML::Node config, char* argv[], float type_value);
 
 extern fs::path OUTPUT_FILE_PATH, LOG_PATH;
 extern ofstream OUTPUT_FILE, LOG_FILE;

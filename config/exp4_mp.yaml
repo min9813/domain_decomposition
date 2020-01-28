@@ -1,34 +1,37 @@
-dim: 1
-type: float
+dim: 2
+type: mp
 is_exact: 0
 try_time: 1
-is_sep: 0
-is_ordered: 1
+is_sparse_lu: true
 space:
   x: [0.0,1.0]
+  y: [0.0,1.0]
 
-time: [0.0, 0.5]
+time: [0.0, 0.3]
 
 condition:
   bound_value:
     x: [0.0, 0.0]
+    y: [0.0, 0.0]
 
   initial_value:
     t: 1.0
 
 delta:
-  t: 0.004
+  t: 0.001
   x: 0.1
+  y: 0.1
 
 solver:
-    - type    : exp
+    - type    : imp
       boundary:
-        x: [0.4, 1.0]
+        x: [0.0, 0.5]
+        y: [0.0, 1.0]
       coef: 1.0
       t_delta: -1.0
     - type    : imp
       boundary:
-        x: [0.0, 0.4]
+        x: [0.5, 1.0]
+        y: [0.0, 1.0]
       coef: 1.0
       t_delta: -1.0
-
